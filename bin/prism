@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Dynamically resolve the Mindset root directory (parent of bin/)
+# Dynamically resolve the Prism root directory (parent of bin/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MINDSET_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
+PRISM_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # --- ANSI Color Palette ---
 C_YELLOW="\033[33;1m"
@@ -33,7 +33,6 @@ clean_path() {
 }
 
 # --- Provider Target Root Mapping ---
-# Each provider expects its agents and skills inside its specific project directory:
 # gemini (or antigravity) -> .agents/ (or .gemini/)
 # claude                 -> .claude/
 # codex                  -> .codex/
@@ -82,7 +81,7 @@ ensure_git_excluded() {
     mkdir -p "$(dirname "$exclude_file")"
     if ! grep -qs "^${target_rel}" "$exclude_file" 2>/dev/null; then
       echo "" >> "$exclude_file"
-      echo "# [mindset] Local developer AI preferences (untracked)" >> "$exclude_file"
+      echo "# [prism] Local developer AI preferences (untracked)" >> "$exclude_file"
       echo "${target_rel}/" >> "$exclude_file"
       echo "${target_rel}" >> "$exclude_file"
     fi
@@ -95,7 +94,7 @@ remove_git_exclusion() {
   local exclude_file="$project_root/.git/info/exclude"
 
   if [[ -f "$exclude_file" ]]; then
-    sed -i.bak "/# \[mindset\]/d" "$exclude_file" 2>/dev/null || true
+    sed -i.bak "/# \[prism\]/d" "$exclude_file" 2>/dev/null || true
     sed -i.bak "\|^${target_rel}/?\$|d" "$exclude_file" 2>/dev/null || true
     rm -f "${exclude_file}.bak"
   fi
@@ -115,7 +114,6 @@ safe_link_dir() {
       ln -sfn "$src" "$dest"
     fi
   elif [[ -d "$dest" ]]; then
-    # Merge mode without overwriting existing files
     for item in "$src"/*; do
       if [[ -e "$item" ]]; then
         local iname
@@ -144,13 +142,12 @@ sync_provider() {
   local project_root
   project_root="$(get_project_root)"
 
-  local agents_src="$MINDSET_HOME/agents"
-  local skills_src="$MINDSET_HOME/skills"
+  local agents_src="$PRISM_HOME/agents"
+  local skills_src="$PRISM_HOME/skills"
 
   local agents_dest="$project_root/$p_root/agents"
   local skills_dest="$project_root/$p_root/skills"
 
-  # Link agents and skills
   if [[ -d "$agents_src" ]]; then
     safe_link_dir "$agents_src" "$agents_dest"
     if [[ "$provider" == "cursor" ]]; then
@@ -162,12 +159,10 @@ sync_provider() {
     safe_link_dir "$skills_src" "$skills_dest"
   fi
 
-  # Apply silent git exclusion
   ensure_git_excluded "$project_root" "$p_root"
 
   local a_count s_count
   a_count=$(count_items "$agents_src" "f")
-  local s_count
   s_count=$(count_items "$skills_src" "d")
 
   local p_pad
@@ -182,7 +177,7 @@ cmd_sync() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Syncing my mindset to${C_RESET} ${display_root}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Syncing prism to${C_RESET} ${display_root}"
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
@@ -201,11 +196,11 @@ cmd_status() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}My mindset status in${C_RESET} ${display_root}"
+  echo -e "\n${sym_bolt} ${C_BOLD}My prism status in${C_RESET} ${display_root}"
 
   local a_count s_count
-  a_count=$(count_items "$MINDSET_HOME/agents" "f")
-  s_count=$(count_items "$MINDSET_HOME/skills" "d")
+  a_count=$(count_items "$PRISM_HOME/agents" "f")
+  s_count=$(count_items "$PRISM_HOME/skills" "d")
 
   for p in "${SUPPORTED_PROVIDERS[@]}"; do
     local p_root
@@ -252,7 +247,6 @@ unsync_provider() {
     if [[ -L "$r_dest" ]]; then rm "$r_dest"; removed=1; elif [[ -d "$r_dest" ]]; then find "$r_dest" -type l -exec rm {} +; removed=1; fi
   fi
 
-  # If parent provider folder is now empty, clean it up
   rmdir "$project_root/$p_root" 2>/dev/null || true
   remove_git_exclusion "$project_root" "$p_root"
 
@@ -272,7 +266,7 @@ cmd_unsync() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Unsyncing my mindset from${C_RESET} ${display_root}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Unsyncing prism from${C_RESET} ${display_root}"
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
@@ -286,8 +280,8 @@ cmd_unsync() {
 
 # --- Command: List Agents & Skills ---
 cmd_list() {
-  local agents_dir="$MINDSET_HOME/agents"
-  local skills_dir="$MINDSET_HOME/skills"
+  local agents_dir="$PRISM_HOME/agents"
+  local skills_dir="$PRISM_HOME/skills"
 
   echo -e "\n${sym_bolt} ${C_BOLD}Agents in${C_RESET} ${C_DIM}$(clean_path "$agents_dir")${C_RESET}"
   if [[ -d "$agents_dir" ]]; then
@@ -316,20 +310,20 @@ cmd_list() {
 
 # --- Command: Install (Aliases) ---
 cmd_install() {
-  local bin_path="$MINDSET_HOME/bin/mindset"
+  local bin_path="$PRISM_HOME/bin/prism"
   chmod +x "$bin_path"
 
   echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations installed${C_RESET}"
 
-  local zsh_bash_alias="alias mindset=\"$bin_path\""
-  local fish_alias="alias mindset '$bin_path'"
+  local zsh_bash_alias="alias prism=\"$bin_path\""
+  local fish_alias="alias prism '$bin_path'"
 
   # Zsh
   local zshrc="$HOME/.zshrc"
   touch "$zshrc"
-  if ! grep -qs "alias mindset=" "$zshrc"; then
-    echo -e "\n# Mindset CLI\n$zsh_bash_alias" >> "$zshrc"
-  fi
+  sed -i.bak '/# Mindset CLI/d; /alias mindset=/d; /# Prism CLI/d; /alias prism=/d' "$zshrc" 2>/dev/null || true
+  rm -f "${zshrc}.bak"
+  echo -e "\n# Prism CLI\n$zsh_bash_alias" >> "$zshrc"
   echo -e "  ${sym_node} zsh  ${sym_active} ${C_DIM}~/.zshrc${C_RESET}"
 
   # Fish
@@ -337,9 +331,9 @@ cmd_install() {
   if [[ -d "$HOME/.config/fish" ]] || which fish >/dev/null 2>&1; then
     mkdir -p "$HOME/.config/fish"
     touch "$fish_conf"
-    if ! grep -qs "alias mindset" "$fish_conf"; then
-      echo -e "\n# Mindset CLI\n$fish_alias" >> "$fish_conf"
-    fi
+    sed -i.bak '/# Mindset CLI/d; /alias mindset/d; /# Prism CLI/d; /alias prism/d' "$fish_conf" 2>/dev/null || true
+    rm -f "${fish_conf}.bak"
+    echo -e "\n# Prism CLI\n$fish_alias" >> "$fish_conf"
     echo -e "  ${sym_node} fish ${sym_active} ${C_DIM}~/.config/fish/config.fish${C_RESET}"
   fi
   echo ""
@@ -352,8 +346,7 @@ cmd_uninstall() {
   # Zsh
   local zshrc="$HOME/.zshrc"
   if [[ -f "$zshrc" ]]; then
-    sed -i.bak '/# Mindset CLI/d' "$zshrc" 2>/dev/null || true
-    sed -i.bak '/alias mindset=/d' "$zshrc" 2>/dev/null || true
+    sed -i.bak '/# Prism CLI/d; /alias prism=/d; /# Mindset CLI/d; /alias mindset=/d' "$zshrc" 2>/dev/null || true
     rm -f "${zshrc}.bak"
     echo -e "  ${sym_node} zsh  ${sym_inactive} ${C_DIM}~/.zshrc${C_RESET}"
   fi
@@ -361,8 +354,7 @@ cmd_uninstall() {
   # Fish
   local fish_conf="$HOME/.config/fish/config.fish"
   if [[ -f "$fish_conf" ]]; then
-    sed -i.bak '/# Mindset CLI/d' "$fish_conf" 2>/dev/null || true
-    sed -i.bak '/alias mindset/d' "$fish_conf" 2>/dev/null || true
+    sed -i.bak '/# Prism CLI/d; /alias prism/d; /# Mindset CLI/d; /alias mindset/d' "$fish_conf" 2>/dev/null || true
     rm -f "${fish_conf}.bak"
     echo -e "  ${sym_node} fish ${sym_inactive} ${C_DIM}~/.config/fish/config.fish${C_RESET}"
   fi
@@ -370,8 +362,7 @@ cmd_uninstall() {
   # Bash
   for rc in "$HOME/.bashrc" "$HOME/.bash_profile"; do
     if [[ -f "$rc" ]]; then
-      sed -i.bak '/# Mindset CLI/d' "$rc" 2>/dev/null || true
-      sed -i.bak '/alias mindset=/d' "$rc" 2>/dev/null || true
+      sed -i.bak '/# Prism CLI/d; /alias prism=/d; /# Mindset CLI/d; /alias mindset=/d' "$rc" 2>/dev/null || true
       rm -f "${rc}.bak"
     fi
   done
@@ -380,14 +371,14 @@ cmd_uninstall() {
 
 # --- Help ---
 show_help() {
-  echo -e "\n${sym_bolt} ${C_BOLD}Mindset CLI${C_RESET}"
-  echo -e "  mindset [provider]         ${C_DIM}Sync to project (default: all providers)${C_RESET}"
-  echo -e "  mindset sync [provider]    ${C_DIM}Explicit sync (default: all providers)${C_RESET}"
-  echo -e "  mindset unsync [provider]  ${C_DIM}Remove from project (default: all providers)${C_RESET}"
-  echo -e "  mindset status             ${C_DIM}View sync status across all providers${C_RESET}"
-  echo -e "  mindset list               ${C_DIM}List all agents & skills in your vault${C_RESET}"
-  echo -e "  mindset install            ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}"
-  echo -e "  mindset uninstall          ${C_DIM}Remove shell aliases (Zsh, Fish)${C_RESET}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Prism CLI${C_RESET}"
+  echo -e "  prism                      ${C_DIM}Sync all providers to current project${C_RESET}"
+  echo -e "  prism [provider]           ${C_DIM}Sync specific provider to current project${C_RESET}"
+  echo -e "  prism unsync [provider]    ${C_DIM}Remove provider (default: all providers)${C_RESET}"
+  echo -e "  prism status               ${C_DIM}View sync status across all providers${C_RESET}"
+  echo -e "  prism list                 ${C_DIM}List all agents & skills in your vault${C_RESET}"
+  echo -e "  prism install              ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}"
+  echo -e "  prism uninstall            ${C_DIM}Remove shell aliases (Zsh, Fish)${C_RESET}"
   echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} gemini, claude, codex, grok, cursor (default: all)\n"
 }
 
