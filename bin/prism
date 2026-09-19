@@ -10,7 +10,7 @@ while [ -L "$SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 PRISM_HOME="$(cd -P "$SCRIPT_DIR/.." && pwd)"
-PRISM_VERSION="0.1.3"
+PRISM_VERSION="0.1.4"
 
 # --- ANSI Color Palette ---
 C_YELLOW="\033[33;1m"
@@ -95,32 +95,47 @@ count_items() {
   fi
 }
 
-# --- Git Stealth Protection (Silent Default) ---
+# --- Git Stealth Protection (Granular & Safe) ---
+# Only exclude the specific paths linked by Prism (e.g., .cursor/agents, .cursor/skills, .cursor/rules)
+# leaving user/team files in .cursor/ (settings, project rules) fully visible and committable.
 ensure_git_excluded() {
   local project_root="$1"
-  local target_rel="$2"
+  local provider="$2"
+  local p_root="$3"
   local exclude_file="$project_root/.git/info/exclude"
 
   if [[ -d "$project_root/.git" ]]; then
     mkdir -p "$(dirname "$exclude_file")"
-    if ! grep -qs "^${target_rel}" "$exclude_file" 2>/dev/null; then
-      echo "" >> "$exclude_file"
-      echo "# [prism] Local developer AI preferences (untracked)" >> "$exclude_file"
-      echo "${target_rel}/" >> "$exclude_file"
-      echo "${target_rel}" >> "$exclude_file"
+    local paths=("${p_root}/agents" "${p_root}/skills")
+    if [[ "$provider" == "cursor" ]]; then
+      paths+=("${p_root}/rules")
     fi
+
+    for subpath in "${paths[@]}"; do
+      if ! grep -qs "^${subpath}" "$exclude_file" 2>/dev/null; then
+        echo "${subpath}/" >> "$exclude_file"
+        echo "${subpath}" >> "$exclude_file"
+      fi
+    done
   fi
 }
 
 remove_git_exclusion() {
   local project_root="$1"
-  local target_rel="$2"
+  local provider="$2"
+  local p_root="$3"
   local exclude_file="$project_root/.git/info/exclude"
 
   if [[ -f "$exclude_file" ]]; then
-    sed -i.bak "/# \[prism\]/d" "$exclude_file" 2>/dev/null || true
-    sed -i.bak "\|^${target_rel}/?\$|d" "$exclude_file" 2>/dev/null || true
-    rm -f "${exclude_file}.bak"
+    local paths=("${p_root}/agents" "${p_root}/skills" "${p_root}")
+    if [[ "$provider" == "cursor" ]]; then
+      paths+=("${p_root}/rules")
+    fi
+
+    for subpath in "${paths[@]}"; do
+      sed -E -i.bak "\|^${subpath}/?\$|d" "$exclude_file" 2>/dev/null || true
+      rm -f "${exclude_file}.bak"
+    done
   fi
 }
 
@@ -184,7 +199,12 @@ apply_provider() {
     safe_link_dir "$skills_src" "$skills_dest"
   fi
 
-  ensure_git_excluded "$project_root" "$p_root"
+  local track="${2:-false}"
+  if [[ "$track" != "true" ]]; then
+    ensure_git_excluded "$project_root" "$provider" "$p_root"
+  else
+    remove_git_exclusion "$project_root" "$provider" "$p_root"
+  fi
 
   local a_count s_count
   a_count=$(count_items "$agents_src" "f")
@@ -192,12 +212,29 @@ apply_provider() {
 
   local raw_right="active (${a_count} agents, ${s_count} skills)"
   local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+  if [[ "$track" == "true" ]]; then
+    colored_right="${C_CYAN}tracked${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+  fi
   dot_leader "$provider" "$raw_right" "$colored_right"
 }
 
 cmd_apply() {
-  local target_provider
-  target_provider="$(resolve_provider "${1:-all}")"
+  local target_provider="all"
+  local track="false"
+
+  for arg in "$@"; do
+    case "$arg" in
+      --track|-t|--shared|--public|track|shared)
+        track="true"
+        ;;
+      *)
+        if [[ -n "$arg" ]]; then
+          target_provider="$(resolve_provider "$arg")"
+        fi
+        ;;
+    esac
+  done
+
   local project_root
   project_root="$(get_project_root)"
   local display_root
@@ -206,14 +243,18 @@ cmd_apply() {
   # Ensure vault directories exist
   mkdir -p "$PRISM_HOME/agents" "$PRISM_HOME/skills"
 
-  echo -e "\n${C_BOLD}Applying prism to${C_RESET} ${display_root}\n"
+  if [[ "$track" == "true" ]]; then
+    echo -e "\n${C_BOLD}Applying prism to${C_RESET} ${display_root} ${C_CYAN}(tracked in git)${C_RESET}\n"
+  else
+    echo -e "\n${C_BOLD}Applying prism to${C_RESET} ${display_root}\n"
+  fi
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
-      apply_provider "$p"
+      apply_provider "$p" "$track"
     done
   else
-    apply_provider "$target_provider"
+    apply_provider "$target_provider" "$track"
   fi
   echo ""
 }
@@ -231,6 +272,8 @@ cmd_status() {
   a_count=$(count_items "$PRISM_HOME/agents" "f")
   s_count=$(count_items "$PRISM_HOME/skills" "d")
 
+  local exclude_file="$project_root/.git/info/exclude"
+
   for p in "${SUPPORTED_PROVIDERS[@]}"; do
     local p_root
     p_root="$(get_provider_root "$p")"
@@ -238,8 +281,16 @@ cmd_status() {
     local s_dest="$project_root/$p_root/skills"
 
     if [[ -e "$a_dest" || -e "$s_dest" ]]; then
+      local is_tracked=true
+      if [[ -f "$exclude_file" ]] && grep -qs "^${p_root}/agents" "$exclude_file" 2>/dev/null; then
+        is_tracked=false
+      fi
+
       local raw_right="active (${a_count} agents, ${s_count} skills)"
       local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+      if [[ "$is_tracked" == "true" ]]; then
+        colored_right="${C_CYAN}tracked${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+      fi
       dot_leader "$p" "$raw_right" "$colored_right"
     else
       dot_leader "$p" "inactive" "${C_DIM}inactive${C_RESET}"
@@ -276,7 +327,7 @@ clean_provider() {
   fi
 
   rmdir "$project_root/$p_root" 2>/dev/null || true
-  remove_git_exclusion "$project_root" "$p_root"
+  remove_git_exclusion "$project_root" "$provider" "$p_root"
 
   if [[ $removed -eq 1 ]]; then
     dot_leader "$provider" "cleaned" "${C_DIM}cleaned${C_RESET}"
@@ -370,7 +421,8 @@ cmd_uninstall() {
 # --- Help ---
 show_help() {
   echo -e "\n${C_BOLD}Prism CLI${C_RESET} ${C_DIM}v${PRISM_VERSION}${C_RESET}"
-  echo -e "  prism [provider]              ${C_DIM}Apply to project (default: all)   [apply]${C_RESET}"
+  echo -e "  prism [provider]              ${C_DIM}Apply to project (stealth, default: all)${C_RESET}"
+  echo -e "  prism --track [provider]      ${C_DIM}Apply and track in Git to share with team [-t]${C_RESET}"
   echo -e "  prism clean [provider]        ${C_DIM}Clean from project (default: all) [rm]${C_RESET}"
   echo -e "  prism status                  ${C_DIM}View status across providers      [st]${C_RESET}"
   echo -e "  prism list                    ${C_DIM}List all agents & skills          [ls, l]${C_RESET}"
@@ -406,10 +458,11 @@ case "${1:-}" in
     show_help
     ;;
   apply|link|sync|s)
-    cmd_apply "${2:-all}"
+    shift
+    cmd_apply "$@"
     ;;
-  gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a)
-    cmd_apply "$1"
+  gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a|--track|-t|--shared|--public|track|shared)
+    cmd_apply "$@"
     ;;
   "")
     cmd_apply "all"

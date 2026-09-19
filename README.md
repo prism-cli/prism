@@ -40,7 +40,8 @@ Applying prism to ~/Sites/my-project
 
 | Command | Shortcut | Description |
 | :--- | :---: | :--- |
-| `prism` | `prism a` | Link all tools to project |
+| `prism` | `prism a` | Link all tools (stealth mode, ignored by git) |
+| `prism --track` | `prism -t` | Link all tools and track in Git to share with team |
 | `prism <tool>` | `prism cr`, `prism c`, etc. | Link one tool (`cr`, `c`, `cx`, `gk`, `g`) |
 | `prism clean` | `prism rm` | Unlink tools from project |
 | `prism status` | `prism st` | Check project status |
