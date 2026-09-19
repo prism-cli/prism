@@ -21,9 +21,8 @@ Applying prism to ~/Sites/project
 # 1. Clone your fork
 git clone https://github.com/<your-username>/prism.git ~/prism
 
-# 2. Install shell alias
+# 2. Install
 ~/prism/bin/prism install
-source ~/.zshrc # or source ~/.config/fish/config.fish
 
 # 3. Apply to any project
 cd ~/Sites/my-project

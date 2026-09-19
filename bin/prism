@@ -325,13 +325,26 @@ cmd_list() {
   echo ""
 }
 
-# --- Command: Install (Aliases) ---
+# --- Command: Install (Binary Symlink + Aliases) ---
 cmd_install() {
   local bin_path="$PRISM_HOME/bin/prism"
   chmod +x "$bin_path"
 
-  echo -e "\n${C_BOLD}Shell integrations installed${C_RESET}\n"
+  echo -e "\n${C_BOLD}Prism installed${C_RESET}\n"
 
+  # 1. Symlink binary into PATH for immediate availability without sourcing
+  local linked_bin=""
+  local candidate_paths=("/opt/homebrew/bin" "$HOME/.local/bin" "/usr/local/bin")
+  for dir in "${candidate_paths[@]}"; do
+    if [[ -d "$dir" && -w "$dir" ]]; then
+      ln -sfn "$bin_path" "$dir/prism"
+      linked_bin="$dir/prism"
+      dot_leader "bin" "$linked_bin" "${C_GREEN}${linked_bin}${C_RESET}"
+      break
+    fi
+  done
+
+  # 2. Shell aliases fallback & persistence
   local zsh_bash_alias="alias prism=\"$bin_path\""
   local fish_alias="alias prism '$bin_path'"
 
@@ -356,9 +369,17 @@ cmd_install() {
   echo ""
 }
 
-# --- Command: Uninstall (Remove Aliases) ---
+# --- Command: Uninstall (Remove Symlink & Aliases) ---
 cmd_uninstall() {
-  echo -e "\n${C_BOLD}Shell integrations removed${C_RESET}\n"
+  echo -e "\n${C_BOLD}Prism uninstalled${C_RESET}\n"
+
+  # Remove symlinked binaries
+  for dir in "/opt/homebrew/bin" "$HOME/.local/bin" "/usr/local/bin"; do
+    if [[ -L "$dir/prism" ]]; then
+      rm -f "$dir/prism"
+      dot_leader "bin" "$dir/prism" "${C_DIM}removed${C_RESET}"
+    fi
+  done
 
   # Zsh
   local zshrc="$HOME/.zshrc"
