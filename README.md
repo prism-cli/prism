@@ -4,15 +4,29 @@
 
 ---
 
-## ⚡ Unified Architecture
+## ⚡ Clean Terminal UI
 
-Maintain only **`agents/`** and **`skills/`** in your central vault. The Prism CLI syncs them into the native, default locations of each AI assistant:
+```terminal
+⚡ Syncing prism to ~/Sites/jacasa-cp
+
+  gemini ................................... synced (3 agents, 2 skills)
+  claude ................................... synced (3 agents, 2 skills)
+  codex .................................... synced (3 agents, 2 skills)
+  grok ..................................... synced (3 agents, 2 skills)
+  cursor ................................... synced (3 agents, 2 skills)
+```
+
+---
+
+## 📦 Directory Structure
+
+Maintain only **`agents/`** and **`skills/`** in your central vault. Prism automatically links them into each AI assistant's native directories:
 
 ```
 ~/prism/
 ├── bin/
 │   └── prism                # Executive CLI tool
-├── agents/                  # Universal agent definitions (.md)
+├── agents/                  # Universal subagent definitions (.md)
 │   ├── agent-1.md           # Code Reviewer & Security Auditor
 │   ├── agent-2.md           # Test Engineer & QA Specialist
 │   └── agent-3.md           # Architecture & Documentation Specialist
@@ -28,8 +42,6 @@ Maintain only **`agents/`** and **`skills/`** in your central vault. The Prism C
 
 ## 🌐 Provider Destination Paths
 
-When synced to any project workspace, Prism links your agents & skills into each provider's native directory structure:
-
 | Provider | Agents Location | Skills Location | Git Ignore Scope |
 | :--- | :--- | :--- | :--- |
 | **Cursor** | `.cursor/agents/` & `.cursor/rules/` | `.cursor/skills/` | `.cursor/` |
@@ -40,7 +52,7 @@ When synced to any project workspace, Prism links your agents & skills into each
 
 ---
 
-## 🚀 Setup & Installation
+## 🚀 Installation
 
 Run once to register shell integrations for **Zsh** and **Fish**:
 

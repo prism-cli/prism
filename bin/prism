@@ -16,11 +16,22 @@ C_RESET="\033[0m"
 
 # Formatting helpers
 sym_bolt="${C_YELLOW}⚡${C_RESET}"
-sym_node="${C_CYAN}◈${C_RESET}"
-sym_active="${C_DIM}──${C_RESET}${C_GREEN}●${C_RESET}"
-sym_inactive="${C_DIM}──○${C_RESET}"
 
 SUPPORTED_PROVIDERS=("gemini" "claude" "codex" "grok" "cursor")
+
+# Dot leader helper (auto-fills dots between left and right column)
+dot_leader() {
+  local left="$1"
+  local right_text="$2"
+  local right_colored="$3"
+  local width=72
+  local total_len=$(( ${#left} + ${#right_text} + 4 ))
+  local dot_count=$(( width - total_len ))
+  if (( dot_count < 2 )); then dot_count=2; fi
+  local dots
+  dots=$(printf '%*s' "$dot_count" '' | tr ' ' '.')
+  echo -e "  ${left} ${C_DIM}${dots}${C_RESET} ${right_colored}"
+}
 
 # Convert absolute path to ~/relative for clean display
 clean_path() {
@@ -135,7 +146,7 @@ sync_provider() {
   p_root="$(get_provider_root "$provider")"
 
   if [[ -z "$p_root" ]]; then
-    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_RED}unknown provider${C_RESET}"
+    echo -e "  ${provider} ... ${C_RED}unknown provider${C_RESET}"
     return 1
   fi
 
@@ -165,9 +176,9 @@ sync_provider() {
   a_count=$(count_items "$agents_src" "f")
   s_count=$(count_items "$skills_src" "d")
 
-  local p_pad
-  printf -v p_pad "%-8s" "$provider"
-  echo -e "  ${sym_node} ${p_pad} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+  local raw_right="synced (${a_count} agents, ${s_count} skills)"
+  local colored_right="${C_GREEN}synced${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+  dot_leader "$provider" "$raw_right" "$colored_right"
 }
 
 cmd_sync() {
@@ -177,7 +188,7 @@ cmd_sync() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Syncing prism to${C_RESET} ${display_root}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Syncing prism to${C_RESET} ${display_root}\n"
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
@@ -196,7 +207,7 @@ cmd_status() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}My prism status in${C_RESET} ${display_root}"
+  echo -e "\n${sym_bolt} ${C_BOLD}My prism status in${C_RESET} ${display_root}\n"
 
   local a_count s_count
   a_count=$(count_items "$PRISM_HOME/agents" "f")
@@ -208,12 +219,12 @@ cmd_status() {
     local a_dest="$project_root/$p_root/agents"
     local s_dest="$project_root/$p_root/skills"
 
-    local p_pad
-    printf -v p_pad "%-8s" "$p"
     if [[ -e "$a_dest" || -e "$s_dest" ]]; then
-      echo -e "  ${sym_node} ${p_pad} ${sym_active} ${C_GREEN}in sync${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+      local raw_right="in sync (${a_count} agents, ${s_count} skills)"
+      local colored_right="${C_GREEN}in sync${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+      dot_leader "$p" "$raw_right" "$colored_right"
     else
-      echo -e "  ${sym_node} ${p_pad} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
+      dot_leader "$p" "not synced" "${C_DIM}not synced${C_RESET}"
     fi
   done
   echo ""
@@ -226,9 +237,7 @@ unsync_provider() {
   p_root="$(get_provider_root "$provider")"
 
   if [[ -z "$p_root" ]]; then
-    local p_pad
-    printf -v p_pad "%-8s" "$provider"
-    echo -e "  ${sym_node} ${p_pad} ${sym_inactive} ${C_RED}unknown provider${C_RESET}"
+    dot_leader "$provider" "unknown provider" "${C_RED}unknown provider${C_RESET}"
     return 1
   fi
 
@@ -250,12 +259,10 @@ unsync_provider() {
   rmdir "$project_root/$p_root" 2>/dev/null || true
   remove_git_exclusion "$project_root" "$p_root"
 
-  local p_pad
-  printf -v p_pad "%-8s" "$provider"
   if [[ $removed -eq 1 ]]; then
-    echo -e "  ${sym_node} ${p_pad} ${sym_inactive} ${C_DIM}unsynced${C_RESET}"
+    dot_leader "$provider" "unsynced" "${C_DIM}unsynced${C_RESET}"
   else
-    echo -e "  ${sym_node} ${p_pad} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
+    dot_leader "$provider" "not synced" "${C_DIM}not synced${C_RESET}"
   fi
 }
 
@@ -266,7 +273,7 @@ cmd_unsync() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Unsyncing prism from${C_RESET} ${display_root}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Unsyncing prism from${C_RESET} ${display_root}\n"
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
@@ -283,25 +290,25 @@ cmd_list() {
   local agents_dir="$PRISM_HOME/agents"
   local skills_dir="$PRISM_HOME/skills"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Agents in${C_RESET} ${C_DIM}$(clean_path "$agents_dir")${C_RESET}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Agents in${C_RESET} ${C_DIM}$(clean_path "$agents_dir")${C_RESET}\n"
   if [[ -d "$agents_dir" ]]; then
     for f in "$agents_dir"/*.md; do
       if [[ -f "$f" ]]; then
         local base name
         base="$(basename "$f")"
         name=$(grep -E "^name:" "$f" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//' || echo "$base")
-        echo -e "  ${sym_node} ${C_BOLD}${name}${C_RESET} ${C_DIM}── ${base}${C_RESET}"
+        dot_leader "$name" "$base" "${C_DIM}${base}${C_RESET}"
       fi
     done
   fi
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Skills in${C_RESET} ${C_DIM}$(clean_path "$skills_dir")${C_RESET}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Skills in${C_RESET} ${C_DIM}$(clean_path "$skills_dir")${C_RESET}\n"
   if [[ -d "$skills_dir" ]]; then
     for d in "$skills_dir"/*; do
       if [[ -d "$d" ]]; then
         local sname
         sname="$(basename "$d")"
-        echo -e "  ${sym_node} ${C_BOLD}${sname}${C_RESET} ${C_DIM}── SKILL.md${C_RESET}"
+        dot_leader "$sname" "SKILL.md" "${C_DIM}SKILL.md${C_RESET}"
       fi
     done
   fi
