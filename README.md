@@ -61,27 +61,32 @@ source ~/.config/fish/config.fish   # for Fish
 Navigate to any project repository:
 
 ```bash
-# Sync specific provider
+# Sync ALL providers by default:
+mindset
+
+# Or explicitly:
+mindset sync
+
+# Sync a specific provider only:
 mindset cursor
 mindset claude
 mindset codex
 mindset grok
-mindset gemini       # (alias: mindset antigravity)
+mindset gemini
 
-# Sync all providers at once
-mindset all
-
-# Check sync status across all providers
+# Check sync status across all providers:
 mindset status
 
-# List all available agents and skills in your vault
+# List all available agents and skills in your vault:
 mindset list
 
-# Unsync from the project
-mindset unsync cursor
-mindset unsync all
+# Unsync ALL providers by default:
+mindset unsync
 
-# Remove shell aliases
+# Unsync a specific provider only:
+mindset unsync cursor
+
+# Remove shell aliases:
 mindset uninstall
 ```
 

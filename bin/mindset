@@ -174,7 +174,7 @@ sync_provider() {
 }
 
 cmd_sync() {
-  local target_provider="${1:-gemini}"
+  local target_provider="${1:-all}"
   local project_root
   project_root="$(get_project_root)"
   local display_root
@@ -258,7 +258,7 @@ unsync_provider() {
 }
 
 cmd_unsync() {
-  local target_provider="${1:-gemini}"
+  local target_provider="${1:-all}"
   local project_root
   project_root="$(get_project_root)"
   local display_root
@@ -373,14 +373,14 @@ cmd_uninstall() {
 # --- Help ---
 show_help() {
   echo -e "\n${sym_bolt} ${C_BOLD}Mindset CLI${C_RESET}"
-  echo -e "  mindset [provider]         ${C_DIM}Sync to project (default: gemini, or 'all')${C_RESET}"
-  echo -e "  mindset sync [provider]    ${C_DIM}Explicit sync${C_RESET}"
-  echo -e "  mindset unsync [provider]  ${C_DIM}Remove from project (or 'all')${C_RESET}"
+  echo -e "  mindset [provider]         ${C_DIM}Sync to project (default: all providers)${C_RESET}"
+  echo -e "  mindset sync [provider]    ${C_DIM}Explicit sync (default: all providers)${C_RESET}"
+  echo -e "  mindset unsync [provider]  ${C_DIM}Remove from project (default: all providers)${C_RESET}"
   echo -e "  mindset status             ${C_DIM}View sync status across all providers${C_RESET}"
   echo -e "  mindset list               ${C_DIM}List all agents & skills in your vault${C_RESET}"
   echo -e "  mindset install            ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}"
   echo -e "  mindset uninstall          ${C_DIM}Remove shell aliases (Zsh, Fish)${C_RESET}"
-  echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} gemini (antigravity), claude, codex, grok, cursor, all\n"
+  echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} gemini, claude, codex, grok, cursor (default: all)\n"
 }
 
 # --- CLI Router ---
@@ -392,7 +392,7 @@ case "${1:-}" in
     cmd_uninstall
     ;;
   unsync|unlink)
-    cmd_unsync "${2:-gemini}"
+    cmd_unsync "${2:-all}"
     ;;
   status)
     cmd_status
@@ -404,13 +404,13 @@ case "${1:-}" in
     show_help
     ;;
   sync)
-    cmd_sync "${2:-gemini}"
+    cmd_sync "${2:-all}"
     ;;
   gemini|antigravity|claude|codex|grok|cursor|all)
     cmd_sync "$1"
     ;;
   "")
-    cmd_sync "gemini"
+    cmd_sync "all"
     ;;
   *)
     echo -e "\n${sym_bolt} ${C_RED}Unknown command or provider '$1'${C_RESET}"
