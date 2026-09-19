@@ -45,6 +45,11 @@ Applying prism to ~/Sites/my-project
 | `prism install` | `prism i` | Symlink CLI to `~/.local/bin` |
 | `prism uninstall` | `prism ui` | Remove CLI symlink |
 
+## Requirements
+
+- **macOS** or **Linux** (native bash, zsh, fish)
+- **Windows** via **WSL2** or **Git Bash**
+
 ## Contributing
 
 PRs are welcome to add tools or improve templates.
