@@ -10,7 +10,7 @@ while [ -L "$SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 PRISM_HOME="$(cd -P "$SCRIPT_DIR/.." && pwd)"
-PRISM_VERSION="0.1.5"
+PRISM_VERSION="0.1.6"
 
 # --- ANSI Color Palette ---
 C_YELLOW="\033[33;1m"
