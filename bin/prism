@@ -43,20 +43,29 @@ clean_path() {
   fi
 }
 
-# --- Provider Target Root Mapping ---
-# gemini (or antigravity) -> .agents/ (or .gemini/)
-# claude                 -> .claude/
-# codex                  -> .codex/
-# grok                   -> .grok/
-# cursor                 -> .cursor/
-get_provider_root() {
+# --- Provider Target Root Mapping & Aliases ---
+resolve_provider() {
   case "$1" in
-    gemini|antigravity) echo ".agents" ;;
-    claude)             echo ".claude" ;;
-    codex)              echo ".codex" ;;
-    grok)               echo ".grok" ;;
-    cursor)             echo ".cursor" ;;
-    *)                  echo "" ;;
+    gemini|antigravity|g|agy) echo "gemini" ;;
+    claude|c)                 echo "claude" ;;
+    codex|cx|co)              echo "codex" ;;
+    grok|gk|x)                echo "grok" ;;
+    cursor|cr|cs)             echo "cursor" ;;
+    all|a)                    echo "all" ;;
+    *)                        echo "$1" ;;
+  esac
+}
+
+get_provider_root() {
+  local p
+  p="$(resolve_provider "$1")"
+  case "$p" in
+    gemini) echo ".agents" ;;
+    claude) echo ".claude" ;;
+    codex)  echo ".codex" ;;
+    grok)   echo ".grok" ;;
+    cursor) echo ".cursor" ;;
+    *)      echo "" ;;
   esac
 }
 
@@ -182,7 +191,8 @@ sync_provider() {
 }
 
 cmd_sync() {
-  local target_provider="${1:-all}"
+  local target_provider
+  target_provider="$(resolve_provider "${1:-all}")"
   local project_root
   project_root="$(get_project_root)"
   local display_root
@@ -232,7 +242,8 @@ cmd_status() {
 
 # --- Command: Unsync Provider ---
 unsync_provider() {
-  local provider="$1"
+  local provider
+  provider="$(resolve_provider "$1")"
   local p_root
   p_root="$(get_provider_root "$provider")"
 
@@ -267,7 +278,8 @@ unsync_provider() {
 }
 
 cmd_unsync() {
-  local target_provider="${1:-all}"
+  local target_provider
+  target_provider="$(resolve_provider "${1:-all}")"
   local project_root
   project_root="$(get_project_root)"
   local display_root
@@ -379,40 +391,42 @@ cmd_uninstall() {
 # --- Help ---
 show_help() {
   echo -e "\n${sym_bolt} ${C_BOLD}Prism CLI${C_RESET}"
-  echo -e "  prism                      ${C_DIM}Sync all providers to current project${C_RESET}"
-  echo -e "  prism [provider]           ${C_DIM}Sync specific provider to current project${C_RESET}"
-  echo -e "  prism unsync [provider]    ${C_DIM}Remove provider (default: all providers)${C_RESET}"
-  echo -e "  prism status               ${C_DIM}View sync status across all providers${C_RESET}"
-  echo -e "  prism list                 ${C_DIM}List all agents & skills in your vault${C_RESET}"
-  echo -e "  prism install              ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}"
-  echo -e "  prism uninstall            ${C_DIM}Remove shell aliases (Zsh, Fish)${C_RESET}"
-  echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} gemini, claude, codex, grok, cursor (default: all)\n"
+  echo -e "  prism [provider]              ${C_DIM}Sync providers (default: all)   [s]${C_RESET}"
+  echo -e "  prism unsync [provider]       ${C_DIM}Remove providers (default: all) [u, rm]${C_RESET}"
+  echo -e "  prism status                  ${C_DIM}View sync status across all     [st]${C_RESET}"
+  echo -e "  prism list                    ${C_DIM}List all agents & skills        [ls, l]${C_RESET}"
+  echo -e "  prism install                 ${C_DIM}Install shell aliases           [i]${C_RESET}"
+  echo -e "  prism uninstall               ${C_DIM}Remove shell aliases            [ui]${C_RESET}"
+  echo -e "\n  ${C_BOLD}Command Shortcuts:${C_RESET}"
+  echo -e "    ${C_CYAN}s${C_RESET} = sync, ${C_CYAN}u${C_RESET} = unsync, ${C_CYAN}st${C_RESET} = status, ${C_CYAN}ls${C_RESET} = list"
+  echo -e "\n  ${C_BOLD}Provider Shortcuts:${C_RESET}"
+  echo -e "    ${C_CYAN}g${C_RESET} = gemini, ${C_CYAN}c${C_RESET} = claude, ${C_CYAN}cx${C_RESET} = codex, ${C_CYAN}gk${C_RESET} = grok, ${C_CYAN}cr${C_RESET} = cursor, ${C_CYAN}a${C_RESET} = all\n"
 }
 
 # --- CLI Router ---
 case "${1:-}" in
-  install)
+  install|i)
     cmd_install
     ;;
-  uninstall)
+  uninstall|ui)
     cmd_uninstall
     ;;
-  unsync|unlink)
+  unsync|unlink|u|rm)
     cmd_unsync "${2:-all}"
     ;;
-  status)
+  status|st)
     cmd_status
     ;;
-  list|agents|skills)
+  list|ls|l|agents|skills)
     cmd_list
     ;;
-  help|--help|-h)
+  help|--help|-h|h)
     show_help
     ;;
-  sync)
+  sync|s)
     cmd_sync "${2:-all}"
     ;;
-  gemini|antigravity|claude|codex|grok|cursor|all)
+  gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a)
     cmd_sync "$1"
     ;;
   "")

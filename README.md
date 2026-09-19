@@ -42,13 +42,13 @@ Maintain only **`agents/`** and **`skills/`** in your central vault. Prism autom
 
 ## 🌐 Provider Destination Paths
 
-| Provider | Agents Location | Skills Location | Git Ignore Scope |
-| :--- | :--- | :--- | :--- |
-| **Cursor** | `.cursor/agents/` & `.cursor/rules/` | `.cursor/skills/` | `.cursor/` |
-| **Claude** | `.claude/agents/` | `.claude/skills/` | `.claude/` |
-| **Codex** | `.codex/agents/` | `.codex/skills/` | `.codex/` |
-| **Grok** | `.grok/agents/` | `.grok/skills/` | `.grok/` |
-| **Gemini / Antigravity** | `.agents/agents/` | `.agents/skills/` | `.agents/` |
+| Provider | Shortcut | Agents Location | Skills Location | Git Ignore Scope |
+| :--- | :--- | :--- | :--- | :--- |
+| **Cursor** | `cr` | `.cursor/agents/` & `.cursor/rules/` | `.cursor/skills/` | `.cursor/` |
+| **Claude** | `c` | `.claude/agents/` | `.claude/skills/` | `.claude/` |
+| **Codex** | `cx` | `.codex/agents/` | `.codex/skills/` | `.codex/` |
+| **Grok** | `gk` | `.grok/agents/` | `.grok/skills/` | `.grok/` |
+| **Gemini** | `g` | `.agents/agents/` | `.agents/skills/` | `.agents/` |
 
 ---
 
@@ -68,36 +68,20 @@ source ~/.config/fish/config.fish   # for Fish
 
 ---
 
-## 💻 Commands
+## ⌨️ Fast Shortcuts Reference
 
-Navigate to any project repository:
-
-```bash
-# Sync ALL providers by default:
-prism
-
-# Sync a specific provider only:
-prism cursor
-prism claude
-prism codex
-prism grok
-prism gemini
-
-# Check sync status across all providers:
-prism status
-
-# List all available agents and skills in your vault:
-prism list
-
-# Unsync ALL providers by default:
-prism unsync
-
-# Unsync a specific provider only:
-prism unsync cursor
-
-# Remove shell aliases:
-prism uninstall
-```
+| Full Command | Shortcut | Description |
+| :--- | :--- | :--- |
+| `prism` or `prism sync` | `prism s` | Sync all providers |
+| `prism status` | `prism st` | Check sync status |
+| `prism list` | `prism ls` (or `prism l`) | List vault agents & skills |
+| `prism unsync` | `prism u` (or `prism rm`) | Unsync all providers |
+| `prism cursor` | `prism cr` | Sync only Cursor |
+| `prism claude` | `prism c` | Sync only Claude |
+| `prism codex` | `prism cx` | Sync only Codex |
+| `prism grok` | `prism gk` | Sync only Grok |
+| `prism gemini` | `prism g` | Sync only Gemini |
+| `prism unsync claude` | `prism u c` | Unsync only Claude |
 
 ---
 
