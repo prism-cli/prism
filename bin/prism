@@ -332,38 +332,40 @@ cmd_install() {
 
   echo -e "\n${C_BOLD}Prism installed${C_RESET}\n"
 
-  # 1. Symlink binary into PATH for immediate availability without sourcing
-  local linked_bin=""
-  local candidate_paths=("/opt/homebrew/bin" "$HOME/.local/bin" "/usr/local/bin")
-  for dir in "${candidate_paths[@]}"; do
-    if [[ -d "$dir" && -w "$dir" ]]; then
-      ln -sfn "$bin_path" "$dir/prism"
-      linked_bin="$dir/prism"
-      dot_leader "bin" "$linked_bin" "${C_GREEN}${linked_bin}${C_RESET}"
-      break
-    fi
-  done
+  # 1. Symlink binary according to Unix standard (XDG base directory / user-local bin)
+  local local_bin="$HOME/.local/bin"
+  mkdir -p "$local_bin"
+  ln -sfn "$bin_path" "$local_bin/prism"
+  dot_leader "bin" "$local_bin/prism" "${C_GREEN}${local_bin}/prism${C_RESET}"
 
   # 2. Shell aliases fallback & persistence
   local zsh_bash_alias="alias prism=\"$bin_path\""
   local fish_alias="alias prism '$bin_path'"
 
-  # Zsh
+  # Zsh: alias + ensure ~/.local/bin in PATH
   local zshrc="$HOME/.zshrc"
   touch "$zshrc"
-  sed -i.bak '/# Mindset CLI/d; /alias mindset=/d; /# Prism CLI/d; /alias prism=/d' "$zshrc" 2>/dev/null || true
+  sed -i.bak '/# Mindset CLI/d; /alias mindset=/d; /# Prism CLI/d; /alias prism=/d; /export PATH=.*\.local\/bin/d' "$zshrc" 2>/dev/null || true
   rm -f "${zshrc}.bak"
-  echo -e "\n# Prism CLI\n$zsh_bash_alias" >> "$zshrc"
+  {
+    echo -e "\n# Prism CLI"
+    echo '[[ ":$PATH:" != *":$HOME/.local/bin:"* ]] && export PATH="$HOME/.local/bin:$PATH"'
+    echo "$zsh_bash_alias"
+  } >> "$zshrc"
   dot_leader "zsh" "~/.zshrc" "${C_DIM}~/.zshrc${C_RESET}"
 
-  # Fish
+  # Fish: alias + ensure ~/.local/bin in PATH
   local fish_conf="$HOME/.config/fish/config.fish"
   if [[ -d "$HOME/.config/fish" ]] || which fish >/dev/null 2>&1; then
     mkdir -p "$HOME/.config/fish"
     touch "$fish_conf"
-    sed -i.bak '/# Mindset CLI/d; /alias mindset/d; /# Prism CLI/d; /alias prism/d' "$fish_conf" 2>/dev/null || true
+    sed -i.bak '/# Mindset CLI/d; /alias mindset/d; /# Prism CLI/d; /alias prism/d; /fish_add_path.*\.local\/bin/d' "$fish_conf" 2>/dev/null || true
     rm -f "${fish_conf}.bak"
-    echo -e "\n# Prism CLI\n$fish_alias" >> "$fish_conf"
+    {
+      echo -e "\n# Prism CLI"
+      echo 'fish_add_path -a $HOME/.local/bin'
+      echo "$fish_alias"
+    } >> "$fish_conf"
     dot_leader "fish" "~/.config/fish/config.fish" "${C_DIM}~/.config/fish/config.fish${C_RESET}"
   fi
   echo ""
