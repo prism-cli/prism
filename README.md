@@ -4,6 +4,12 @@ Sync your personal AI developer agents and skills across Cursor, Claude, Codex, 
 
 Fork this template to version-control your personal setup across machines.
 
+## How it Works
+
+1. Keep your custom agents (`agents/*.md`) and skills (`skills/*/SKILL.md`) once in `~/prism`.
+2. Running `prism` links them into each tool's native folder (`.cursor/`, `.claude/`, `.agents/`, etc.).
+3. Symlinks are automatically added to `.git/info/exclude`—never polluting `git status` or PRs.
+
 ## Quick Start
 
 ```terminal
@@ -21,12 +27,6 @@ Applying prism to ~/Sites/my-project
   grok ..................................... active (3 agents, 2 skills)
   cursor ................................... active (3 agents, 2 skills)
 ```
-
-## How it Works
-
-1. Keep your custom agents (`agents/*.md`) and skills (`skills/*/SKILL.md`) once in `~/prism`.
-2. Running `prism` links them into each tool's native folder (`.cursor/`, `.claude/`, `.agents/`, etc.).
-3. Symlinks are automatically added to `.git/info/exclude`—never polluting `git status` or PRs.
 
 ## Commands
 
