@@ -332,7 +332,7 @@ cmd_install() {
   local bin_path="$PRISM_HOME/bin/prism"
   chmod +x "$bin_path"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations installed${C_RESET}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations installed${C_RESET}\n"
 
   local zsh_bash_alias="alias prism=\"$bin_path\""
   local fish_alias="alias prism '$bin_path'"
@@ -343,7 +343,7 @@ cmd_install() {
   sed -i.bak '/# Mindset CLI/d; /alias mindset=/d; /# Prism CLI/d; /alias prism=/d' "$zshrc" 2>/dev/null || true
   rm -f "${zshrc}.bak"
   echo -e "\n# Prism CLI\n$zsh_bash_alias" >> "$zshrc"
-  echo -e "  ${sym_node} zsh  ${sym_active} ${C_DIM}~/.zshrc${C_RESET}"
+  dot_leader "zsh" "~/.zshrc" "${C_DIM}~/.zshrc${C_RESET}"
 
   # Fish
   local fish_conf="$HOME/.config/fish/config.fish"
@@ -353,21 +353,21 @@ cmd_install() {
     sed -i.bak '/# Mindset CLI/d; /alias mindset/d; /# Prism CLI/d; /alias prism/d' "$fish_conf" 2>/dev/null || true
     rm -f "${fish_conf}.bak"
     echo -e "\n# Prism CLI\n$fish_alias" >> "$fish_conf"
-    echo -e "  ${sym_node} fish ${sym_active} ${C_DIM}~/.config/fish/config.fish${C_RESET}"
+    dot_leader "fish" "~/.config/fish/config.fish" "${C_DIM}~/.config/fish/config.fish${C_RESET}"
   fi
   echo ""
 }
 
 # --- Command: Uninstall (Remove Aliases) ---
 cmd_uninstall() {
-  echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations removed${C_RESET}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations removed${C_RESET}\n"
 
   # Zsh
   local zshrc="$HOME/.zshrc"
   if [[ -f "$zshrc" ]]; then
     sed -i.bak '/# Prism CLI/d; /alias prism=/d; /# Mindset CLI/d; /alias mindset=/d' "$zshrc" 2>/dev/null || true
     rm -f "${zshrc}.bak"
-    echo -e "  ${sym_node} zsh  ${sym_inactive} ${C_DIM}~/.zshrc${C_RESET}"
+    dot_leader "zsh" "removed" "${C_DIM}removed${C_RESET}"
   fi
 
   # Fish
@@ -375,7 +375,7 @@ cmd_uninstall() {
   if [[ -f "$fish_conf" ]]; then
     sed -i.bak '/# Prism CLI/d; /alias prism/d; /# Mindset CLI/d; /alias mindset/d' "$fish_conf" 2>/dev/null || true
     rm -f "${fish_conf}.bak"
-    echo -e "  ${sym_node} fish ${sym_inactive} ${C_DIM}~/.config/fish/config.fish${C_RESET}"
+    dot_leader "fish" "removed" "${C_DIM}removed${C_RESET}"
   fi
 
   # Bash
