@@ -73,6 +73,9 @@ mindset list
 
 # Unsync from the current project
 mindset unsync antigravity
+
+# Remove shell aliases
+mindset uninstall
 ```
 
 ---

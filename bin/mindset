@@ -271,6 +271,39 @@ cmd_install() {
   echo ""
 }
 
+# --- Command: Uninstall (Remove Aliases) ---
+cmd_uninstall() {
+  echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations removed${C_RESET}"
+
+  # Zsh
+  local zshrc="$HOME/.zshrc"
+  if [[ -f "$zshrc" ]]; then
+    sed -i.bak '/# Mindset CLI/d' "$zshrc" 2>/dev/null || true
+    sed -i.bak '/alias mindset=/d' "$zshrc" 2>/dev/null || true
+    rm -f "${zshrc}.bak"
+    echo -e "  ${sym_node} zsh  ${sym_inactive} ${C_DIM}~/.zshrc${C_RESET}"
+  fi
+
+  # Fish
+  local fish_conf="$HOME/.config/fish/config.fish"
+  if [[ -f "$fish_conf" ]]; then
+    sed -i.bak '/# Mindset CLI/d' "$fish_conf" 2>/dev/null || true
+    sed -i.bak '/alias mindset/d' "$fish_conf" 2>/dev/null || true
+    rm -f "${fish_conf}.bak"
+    echo -e "  ${sym_node} fish ${sym_inactive} ${C_DIM}~/.config/fish/config.fish${C_RESET}"
+  fi
+
+  # Bash
+  for rc in "$HOME/.bashrc" "$HOME/.bash_profile"; do
+    if [[ -f "$rc" ]]; then
+      sed -i.bak '/# Mindset CLI/d' "$rc" 2>/dev/null || true
+      sed -i.bak '/alias mindset=/d' "$rc" 2>/dev/null || true
+      rm -f "${rc}.bak"
+    fi
+  done
+  echo ""
+}
+
 # --- Help ---
 show_help() {
   echo -e "\n${sym_bolt} ${C_BOLD}Mindset CLI${C_RESET}"
@@ -278,13 +311,17 @@ show_help() {
   echo -e "  mindset unsync [provider]  ${C_DIM}Remove from project${C_RESET}"
   echo -e "  mindset status             ${C_DIM}View status in project${C_RESET}"
   echo -e "  mindset list               ${C_DIM}List agents in vault${C_RESET}"
-  echo -e "  mindset install            ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}\n"
+  echo -e "  mindset install            ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}"
+  echo -e "  mindset uninstall          ${C_DIM}Remove shell aliases (Zsh, Fish)${C_RESET}\n"
 }
 
 # --- CLI Router ---
 case "${1:-}" in
   install)
     cmd_install
+    ;;
+  uninstall)
+    cmd_uninstall
     ;;
   unsync|unlink)
     cmd_unsync "${2:-antigravity}"
