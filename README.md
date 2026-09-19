@@ -10,13 +10,8 @@ A lightweight template and CLI system to maintain your personal AI personas, rul
 
 </div>
 
----
-
-> **Note**: This repository is a starter template. Fork it to your own GitHub account, tailor your agents and skills, and keep your personal AI development environment version-controlled across machines.
-
----
-
-### Clean Terminal Output
+> [!NOTE]
+> This repository is a starter template. Fork it to your own GitHub account, tailor your agents and skills, and keep your personal AI development environment version-controlled across machines.
 
 ```
 Applying prism to ~/Sites/project
@@ -27,8 +22,6 @@ Applying prism to ~/Sites/project
   grok ..................................... active (3 agents, 2 skills)
   cursor ................................... active (3 agents, 2 skills)
 ```
-
----
 
 ## Quick Start
 
@@ -52,8 +45,6 @@ Open any Git repository on your machine and run:
 prism
 ```
 All universal agents and skills are linked into the project's native provider paths, automatically excluded from Git, and ready to use.
-
----
 
 ## How It Works
 
@@ -81,8 +72,6 @@ Maintain only your universal Markdown definitions in `~/prism`. The CLI maps the
 | **Grok** | `gk` | `.grok/agents/` | `.grok/skills/` | `.grok/` |
 | **Gemini** | `g` | `.agents/agents/` | `.agents/skills/` | `.agents/` |
 
----
-
 ## Commands
 
 | Command | Shortcut | Description |
@@ -96,8 +85,6 @@ Maintain only your universal Markdown definitions in `~/prism`. The CLI maps the
 | `prism install` | `prism i` | Register shell aliases (`~/.zshrc`, Fish config) |
 | `prism uninstall` | `prism ui` | Remove shell aliases |
 
----
-
 ## Fork & Customize
 
 Make Prism your own:
@@ -106,8 +93,6 @@ Make Prism your own:
 2. **Add Custom Skills**: Create folders under `skills/<name>/SKILL.md` for task-specific playbooks (e.g. database migrations, release checklists).
 3. **Commit & Push**: Push changes to your own fork to keep your multi-machine developer setup in sync.
 
----
+> [!TIP]
+> Prism automatically and silently appends active symlinks to `.git/info/exclude`. Your developer configuration is always live in your editor, but **never appears in `git status`, commits, or PR diffs**.
 
-## Zero Git Pollution
-
-Prism automatically and silently appends active symlinks to `.git/info/exclude`. Your developer configuration is always live in your editor, but **never appears in `git status`, commits, or PR diffs**.
