@@ -42,8 +42,10 @@ Applying prism to ~/Sites/my-project
 | :--- | :---: | :--- |
 | `prism` | `prism a` | Link all tools (stealth mode, ignored by git) |
 | `prism --track` | `prism -t` | Link all tools and track in Git to share with team |
+| `prism agent <name>` | — | Link a specific agent only (e.g. `prism agent code-reviewer`) |
+| `prism skill <name>` | — | Link a specific skill only (e.g. `prism skill git-workflow`) |
 | `prism <tool>` | `prism cr`, `prism c`, etc. | Link one tool (`cr`, `c`, `cx`, `gk`, `g`) |
-| `prism clean` | `prism rm` | Unlink tools from project |
+| `prism clean` | `prism rm` | Unlink tools from project (or `prism rm agent <name>`) |
 | `prism status` | `prism st` | Check project status |
 | `prism list` | `prism ls` | List agents and skills |
 | `prism install` | `prism i` | Symlink CLI to `~/.local/bin` |

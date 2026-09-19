@@ -10,7 +10,7 @@ while [ -L "$SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 PRISM_HOME="$(cd -P "$SCRIPT_DIR/.." && pwd)"
-PRISM_VERSION="0.1.4"
+PRISM_VERSION="0.1.5"
 
 # --- ANSI Color Palette ---
 C_YELLOW="\033[33;1m"
@@ -86,37 +86,161 @@ count_items() {
   local type="${2:-f}"
   if [[ -d "$dir" ]]; then
     if [[ "$type" == "d" ]]; then
-      find "$dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
+      find -L "$dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
     else
       find "$dir" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' '
     fi
+  elif [[ -L "$dir" ]]; then
+    local target
+    target="$(readlink "$dir")"
+    [[ "$target" != /* ]] && target="$(dirname "$dir")/$target"
+    count_items "$target" "$type"
   else
     echo "0"
   fi
 }
 
+format_summary() {
+  local a_cnt="$1"
+  local s_cnt="$2"
+  local a_label="agents"
+  local s_label="skills"
+  [[ "$a_cnt" -eq 1 ]] && a_label="agent"
+  [[ "$s_cnt" -eq 1 ]] && s_label="skill"
+  echo "${a_cnt} ${a_label}, ${s_cnt} ${s_label}"
+}
+
+# --- Agent & Skill Name Resolution ---
+find_agent_file() {
+  local query="$1"
+  local agents_dir="$PRISM_HOME/agents"
+  [[ ! -d "$agents_dir" ]] && return 1
+
+  # 1. Exact path or filename match
+  if [[ -f "$agents_dir/$query" ]]; then
+    echo "$agents_dir/$query"
+    return 0
+  fi
+  if [[ -f "$agents_dir/${query}.md" ]]; then
+    echo "$agents_dir/${query}.md"
+    return 0
+  fi
+
+  # 2. Match stem or frontmatter 'name: <query>'
+  for f in "$agents_dir"/*.md; do
+    if [[ -f "$f" ]]; then
+      local base="${f##*/}"
+      local stem="${base%.md}"
+      if [[ "$stem" == "$query" ]]; then
+        echo "$f"
+        return 0
+      fi
+      local fm_name
+      fm_name=$(grep -E "^name:[[:space:]]*" "$f" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//; s/[[:space:]]*$//' || true)
+      if [[ "$fm_name" == "$query" ]]; then
+        echo "$f"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
+get_agent_title() {
+  local file="$1"
+  local base="${file##*/}"
+  local name
+  name=$(grep -E "^name:[[:space:]]*" "$file" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//; s/[[:space:]]*$//' || true)
+  if [[ -n "$name" ]]; then
+    echo "$name"
+  else
+    echo "${base%.md}"
+  fi
+}
+
+find_skill_dir() {
+  local query="$1"
+  local skills_dir="$PRISM_HOME/skills"
+  [[ ! -d "$skills_dir" ]] && return 1
+
+  # 1. Exact directory match
+  if [[ -d "$skills_dir/$query" ]]; then
+    echo "$skills_dir/$query"
+    return 0
+  fi
+
+  # 2. Match directory name or frontmatter 'name: <query>' in SKILL.md
+  for d in "$skills_dir"/*; do
+    if [[ -d "$d" ]]; then
+      local dname="${d##*/}"
+      if [[ "$dname" == "$query" ]]; then
+        echo "$d"
+        return 0
+      fi
+      if [[ -f "$d/SKILL.md" ]]; then
+        local fm_name
+        fm_name=$(grep -E "^name:[[:space:]]*" "$d/SKILL.md" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//; s/[[:space:]]*$//' || true)
+        if [[ "$fm_name" == "$query" ]]; then
+          echo "$d"
+          return 0
+        fi
+      fi
+    fi
+  done
+  return 1
+}
+
+get_skill_title() {
+  local dir="$1"
+  local base="${dir##*/}"
+  if [[ -f "$dir/SKILL.md" ]]; then
+    local name
+    name=$(grep -E "^name:[[:space:]]*" "$dir/SKILL.md" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//; s/[[:space:]]*$//' || true)
+    if [[ -n "$name" ]]; then
+      echo "$name"
+      return
+    fi
+  fi
+  echo "$base"
+}
+
 # --- Git Stealth Protection (Granular & Safe) ---
-# Only exclude the specific paths linked by Prism (e.g., .cursor/agents, .cursor/skills, .cursor/rules)
-# leaving user/team files in .cursor/ (settings, project rules) fully visible and committable.
-ensure_git_excluded() {
+ensure_git_excluded_item() {
   local project_root="$1"
-  local provider="$2"
-  local p_root="$3"
+  local subpath="$2"
   local exclude_file="$project_root/.git/info/exclude"
 
   if [[ -d "$project_root/.git" ]]; then
     mkdir -p "$(dirname "$exclude_file")"
-    local paths=("${p_root}/agents" "${p_root}/skills")
-    if [[ "$provider" == "cursor" ]]; then
-      paths+=("${p_root}/rules")
+    if ! grep -qs "^${subpath}\$" "$exclude_file" 2>/dev/null; then
+      echo "${subpath}" >> "$exclude_file"
     fi
+  fi
+}
 
-    for subpath in "${paths[@]}"; do
-      if ! grep -qs "^${subpath}" "$exclude_file" 2>/dev/null; then
-        echo "${subpath}/" >> "$exclude_file"
-        echo "${subpath}" >> "$exclude_file"
-      fi
-    done
+remove_git_exclusion_item() {
+  local project_root="$1"
+  local subpath="$2"
+  local exclude_file="$project_root/.git/info/exclude"
+
+  if [[ -f "$exclude_file" ]]; then
+    sed -E -i.bak "\|^${subpath}/?\$|d" "$exclude_file" 2>/dev/null || true
+    rm -f "${exclude_file}.bak"
+  fi
+}
+
+ensure_git_excluded() {
+  local project_root="$1"
+  local provider="$2"
+  local p_root="$3"
+
+  ensure_git_excluded_item "$project_root" "${p_root}/agents"
+  ensure_git_excluded_item "$project_root" "${p_root}/agents/"
+  ensure_git_excluded_item "$project_root" "${p_root}/skills"
+  ensure_git_excluded_item "$project_root" "${p_root}/skills/"
+  if [[ "$provider" == "cursor" ]]; then
+    ensure_git_excluded_item "$project_root" "${p_root}/rules"
+    ensure_git_excluded_item "$project_root" "${p_root}/rules/"
   fi
 }
 
@@ -124,50 +248,130 @@ remove_git_exclusion() {
   local project_root="$1"
   local provider="$2"
   local p_root="$3"
-  local exclude_file="$project_root/.git/info/exclude"
 
-  if [[ -f "$exclude_file" ]]; then
-    local paths=("${p_root}/agents" "${p_root}/skills" "${p_root}")
-    if [[ "$provider" == "cursor" ]]; then
-      paths+=("${p_root}/rules")
-    fi
-
-    for subpath in "${paths[@]}"; do
-      sed -E -i.bak "\|^${subpath}/?\$|d" "$exclude_file" 2>/dev/null || true
-      rm -f "${exclude_file}.bak"
-    done
+  remove_git_exclusion_item "$project_root" "${p_root}/agents"
+  remove_git_exclusion_item "$project_root" "${p_root}/skills"
+  remove_git_exclusion_item "$project_root" "${p_root}"
+  if [[ "$provider" == "cursor" ]]; then
+    remove_git_exclusion_item "$project_root" "${p_root}/rules"
   fi
 }
 
-# Link a single category (agents or skills) safely
+# Link all items inside src into dest directory safely
 safe_link_dir() {
   local src="$1"
   local dest="$2"
 
-  mkdir -p "$(dirname "$dest")"
-
   if [[ -L "$dest" ]]; then
-    local current
-    current="$(readlink "$dest")"
-    if [[ "$current" != "$src" ]]; then
-      ln -sfn "$src" "$dest"
-    fi
-  elif [[ -d "$dest" ]]; then
-    for item in "$src"/*; do
-      if [[ -e "$item" ]]; then
-        local iname
-        iname="$(basename "$item")"
-        if [[ ! -e "$dest/$iname" ]]; then
-          ln -s "$item" "$dest/$iname"
-        fi
-      fi
-    done
-  else
-    ln -s "$src" "$dest"
+    rm -f "$dest"
   fi
+  mkdir -p "$dest"
+
+  for item in "$src"/*; do
+    if [[ -e "$item" ]]; then
+      local iname
+      iname="$(basename "$item")"
+      ln -sfn "$item" "$dest/$iname"
+    fi
+  done
 }
 
-# --- Command: Apply Single Provider ---
+# --- Command: Apply Single Agent ---
+apply_single_agent() {
+  local provider="$1"
+  local agent_path="$2"
+  local track="${3:-false}"
+
+  local p_root
+  p_root="$(get_provider_root "$provider")"
+  if [[ -z "$p_root" ]]; then
+    dot_leader "$provider" "unknown provider" "${C_RED}unknown provider${C_RESET}"
+    return 1
+  fi
+
+  local project_root
+  project_root="$(get_project_root)"
+  local agent_fname="${agent_path##*/}"
+  local agent_title
+  agent_title="$(get_agent_title "$agent_path")"
+
+  local dest_dir="$project_root/$p_root/agents"
+  if [[ -L "$dest_dir" ]]; then
+    rm -f "$dest_dir"
+  fi
+  mkdir -p "$dest_dir"
+  ln -sfn "$agent_path" "$dest_dir/$agent_fname"
+
+  if [[ "$provider" == "cursor" ]]; then
+    local rules_dir="$project_root/$p_root/rules"
+    if [[ -L "$rules_dir" ]]; then
+      rm -f "$rules_dir"
+    fi
+    mkdir -p "$rules_dir"
+    ln -sfn "$agent_path" "$rules_dir/$agent_fname"
+  fi
+
+  if [[ "$track" != "true" ]]; then
+    ensure_git_excluded_item "$project_root" "${p_root}/agents/${agent_fname}"
+    if [[ "$provider" == "cursor" ]]; then
+      ensure_git_excluded_item "$project_root" "${p_root}/rules/${agent_fname}"
+    fi
+  else
+    remove_git_exclusion_item "$project_root" "${p_root}/agents/${agent_fname}"
+    if [[ "$provider" == "cursor" ]]; then
+      remove_git_exclusion_item "$project_root" "${p_root}/rules/${agent_fname}"
+    fi
+  fi
+
+  local raw_right="active (agent: ${agent_title})"
+  local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(agent: ${agent_title})${C_RESET}"
+  if [[ "$track" == "true" ]]; then
+    colored_right="${C_CYAN}tracked${C_RESET} ${C_DIM}(agent: ${agent_title})${C_RESET}"
+  fi
+  dot_leader "$provider" "$raw_right" "$colored_right"
+}
+
+# --- Command: Apply Single Skill ---
+apply_single_skill() {
+  local provider="$1"
+  local skill_path="$2"
+  local track="${3:-false}"
+
+  local p_root
+  p_root="$(get_provider_root "$provider")"
+  if [[ -z "$p_root" ]]; then
+    dot_leader "$provider" "unknown provider" "${C_RED}unknown provider${C_RESET}"
+    return 1
+  fi
+
+  local project_root
+  project_root="$(get_project_root)"
+  local skill_dname="${skill_path##*/}"
+  local skill_title
+  skill_title="$(get_skill_title "$skill_path")"
+
+  local dest_dir="$project_root/$p_root/skills"
+  if [[ -L "$dest_dir" ]]; then
+    rm -f "$dest_dir"
+  fi
+  mkdir -p "$dest_dir"
+  ln -sfn "$skill_path" "$dest_dir/$skill_dname"
+
+  if [[ "$track" != "true" ]]; then
+    ensure_git_excluded_item "$project_root" "${p_root}/skills/${skill_dname}"
+  else
+    remove_git_exclusion_item "$project_root" "${p_root}/skills/${skill_dname}"
+  fi
+
+  local raw_right="active (skill: ${skill_title})"
+  local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(skill: ${skill_title})${C_RESET}"
+  if [[ "$track" == "true" ]]; then
+    colored_right="${C_CYAN}tracked${C_RESET} ${C_DIM}(skill: ${skill_title})${C_RESET}"
+  fi
+  dot_leader "$provider" "$raw_right" "$colored_right"
+}
+
+# --- Command: Apply Single Provider (All Items) ---
 apply_provider() {
   local provider
   provider="$(resolve_provider "$1")"
@@ -207,30 +411,70 @@ apply_provider() {
   fi
 
   local a_count s_count
-  a_count=$(count_items "$agents_src" "f")
-  s_count=$(count_items "$skills_src" "d")
+  a_count=$(count_items "$agents_dest" "f")
+  s_count=$(count_items "$skills_dest" "d")
+  local summary
+  summary="$(format_summary "$a_count" "$s_count")"
 
-  local raw_right="active (${a_count} agents, ${s_count} skills)"
-  local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+  local raw_right="active (${summary})"
+  local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(${summary})${C_RESET}"
   if [[ "$track" == "true" ]]; then
-    colored_right="${C_CYAN}tracked${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+    colored_right="${C_CYAN}tracked${C_RESET} ${C_DIM}(${summary})${C_RESET}"
   fi
   dot_leader "$provider" "$raw_right" "$colored_right"
 }
 
+# --- Command: Apply Router ---
 cmd_apply() {
   local target_provider="all"
   local track="false"
+  local target_agent=""
+  local target_skill=""
 
-  for arg in "$@"; do
-    case "$arg" in
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
       --track|-t|--shared|--public|track|shared)
         track="true"
+        shift
+        ;;
+      agent|--agent)
+        shift
+        if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
+          target_agent="$1"
+          shift
+        else
+          echo -e "\n${C_RED}Error: Missing agent name after '$1'${C_RESET}"
+          echo -e "Usage: prism agent <name> [provider] [--track]\n"
+          return 1
+        fi
+        ;;
+      --agent=*)
+        target_agent="${1#*=}"
+        shift
+        ;;
+      skill|--skill)
+        shift
+        if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
+          target_skill="$1"
+          shift
+        else
+          echo -e "\n${C_RED}Error: Missing skill name after '$1'${C_RESET}"
+          echo -e "Usage: prism skill <name> [provider] [--track]\n"
+          return 1
+        fi
+        ;;
+      --skill=*)
+        target_skill="${1#*=}"
+        shift
+        ;;
+      gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a)
+        target_provider="$(resolve_provider "$1")"
+        shift
         ;;
       *)
-        if [[ -n "$arg" ]]; then
-          target_provider="$(resolve_provider "$arg")"
-        fi
+        echo -e "\n${C_RED}Unknown argument: '$1'${C_RESET}"
+        show_help
+        return 1
         ;;
     esac
   done
@@ -243,6 +487,65 @@ cmd_apply() {
   # Ensure vault directories exist
   mkdir -p "$PRISM_HOME/agents" "$PRISM_HOME/skills"
 
+  # Case 1: Apply single agent
+  if [[ -n "$target_agent" ]]; then
+    local agent_path
+    agent_path="$(find_agent_file "$target_agent")" || true
+    if [[ -z "$agent_path" || ! -f "$agent_path" ]]; then
+      echo -e "\n${C_RED}Agent '${target_agent}' not found in $(clean_path "$PRISM_HOME/agents")${C_RESET}"
+      echo -e "Run '${C_CYAN}prism list${C_RESET}' to see available agents.\n"
+      return 1
+    fi
+    local agent_title
+    agent_title="$(get_agent_title "$agent_path")"
+
+    if [[ "$track" == "true" ]]; then
+      echo -e "\n${C_BOLD}Applying agent '${agent_title}' to${C_RESET} ${display_root} ${C_CYAN}(tracked in git)${C_RESET}\n"
+    else
+      echo -e "\n${C_BOLD}Applying agent '${agent_title}' to${C_RESET} ${display_root}\n"
+    fi
+
+    if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
+      for p in "${SUPPORTED_PROVIDERS[@]}"; do
+        apply_single_agent "$p" "$agent_path" "$track"
+      done
+    else
+      apply_single_agent "$target_provider" "$agent_path" "$track"
+    fi
+    echo ""
+    return 0
+  fi
+
+  # Case 2: Apply single skill
+  if [[ -n "$target_skill" ]]; then
+    local skill_path
+    skill_path="$(find_skill_dir "$target_skill")" || true
+    if [[ -z "$skill_path" || ! -d "$skill_path" ]]; then
+      echo -e "\n${C_RED}Skill '${target_skill}' not found in $(clean_path "$PRISM_HOME/skills")${C_RESET}"
+      echo -e "Run '${C_CYAN}prism list${C_RESET}' to see available skills.\n"
+      return 1
+    fi
+    local skill_title
+    skill_title="$(get_skill_title "$skill_path")"
+
+    if [[ "$track" == "true" ]]; then
+      echo -e "\n${C_BOLD}Applying skill '${skill_title}' to${C_RESET} ${display_root} ${C_CYAN}(tracked in git)${C_RESET}\n"
+    else
+      echo -e "\n${C_BOLD}Applying skill '${skill_title}' to${C_RESET} ${display_root}\n"
+    fi
+
+    if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
+      for p in "${SUPPORTED_PROVIDERS[@]}"; do
+        apply_single_skill "$p" "$skill_path" "$track"
+      done
+    else
+      apply_single_skill "$target_provider" "$skill_path" "$track"
+    fi
+    echo ""
+    return 0
+  fi
+
+  # Case 3: Apply all agents and skills
   if [[ "$track" == "true" ]]; then
     echo -e "\n${C_BOLD}Applying prism to${C_RESET} ${display_root} ${C_CYAN}(tracked in git)${C_RESET}\n"
   else
@@ -268,10 +571,6 @@ cmd_status() {
 
   echo -e "\n${C_BOLD}Prism status in${C_RESET} ${display_root}\n"
 
-  local a_count s_count
-  a_count=$(count_items "$PRISM_HOME/agents" "f")
-  s_count=$(count_items "$PRISM_HOME/skills" "d")
-
   local exclude_file="$project_root/.git/info/exclude"
 
   for p in "${SUPPORTED_PROVIDERS[@]}"; do
@@ -280,16 +579,24 @@ cmd_status() {
     local a_dest="$project_root/$p_root/agents"
     local s_dest="$project_root/$p_root/skills"
 
-    if [[ -e "$a_dest" || -e "$s_dest" ]]; then
+    local a_count s_count
+    a_count=$(count_items "$a_dest" "f")
+    s_count=$(count_items "$s_dest" "d")
+
+    if (( a_count > 0 || s_count > 0 )) || [[ -e "$a_dest" || -e "$s_dest" ]]; then
       local is_tracked=true
-      if [[ -f "$exclude_file" ]] && grep -qs "^${p_root}/agents" "$exclude_file" 2>/dev/null; then
-        is_tracked=false
+      if [[ -f "$exclude_file" ]]; then
+        if grep -qs "^${p_root}/agents" "$exclude_file" 2>/dev/null || grep -qs "^${p_root}/skills" "$exclude_file" 2>/dev/null; then
+          is_tracked=false
+        fi
       fi
 
-      local raw_right="active (${a_count} agents, ${s_count} skills)"
-      local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+      local summary
+      summary="$(format_summary "$a_count" "$s_count")"
+      local raw_right="active (${summary})"
+      local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(${summary})${C_RESET}"
       if [[ "$is_tracked" == "true" ]]; then
-        colored_right="${C_CYAN}tracked${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+        colored_right="${C_CYAN}tracked${C_RESET} ${C_DIM}(${summary})${C_RESET}"
       fi
       dot_leader "$p" "$raw_right" "$colored_right"
     else
@@ -299,7 +606,90 @@ cmd_status() {
   echo ""
 }
 
-# --- Command: Clean Single Provider ---
+# --- Command: Clean Single Agent ---
+clean_single_agent() {
+  local provider="$1"
+  local agent_path="$2"
+
+  local p_root
+  p_root="$(get_provider_root "$provider")"
+  if [[ -z "$p_root" ]]; then
+    dot_leader "$provider" "unknown provider" "${C_RED}unknown provider${C_RESET}"
+    return 1
+  fi
+
+  local project_root
+  project_root="$(get_project_root)"
+  local agent_fname="${agent_path##*/}"
+  local agent_title
+  agent_title="$(get_agent_title "$agent_path")"
+
+  local removed=0
+  local target="$project_root/$p_root/agents/$agent_fname"
+  if [[ -L "$target" || -f "$target" ]]; then
+    rm -f "$target"
+    removed=1
+  fi
+
+  if [[ "$provider" == "cursor" ]]; then
+    local rule_target="$project_root/$p_root/rules/$agent_fname"
+    if [[ -L "$rule_target" || -f "$rule_target" ]]; then
+      rm -f "$rule_target"
+      removed=1
+    fi
+    rmdir "$project_root/$p_root/rules" 2>/dev/null || true
+  fi
+
+  remove_git_exclusion_item "$project_root" "${p_root}/agents/${agent_fname}"
+  if [[ "$provider" == "cursor" ]]; then
+    remove_git_exclusion_item "$project_root" "${p_root}/rules/${agent_fname}"
+  fi
+
+  rmdir "$project_root/$p_root/agents" 2>/dev/null || true
+  rmdir "$project_root/$p_root" 2>/dev/null || true
+
+  if [[ $removed -eq 1 ]]; then
+    dot_leader "$provider" "removed" "${C_DIM}removed${C_RESET}"
+  else
+    dot_leader "$provider" "clean" "${C_DIM}clean${C_RESET}"
+  fi
+}
+
+# --- Command: Clean Single Skill ---
+clean_single_skill() {
+  local provider="$1"
+  local skill_path="$2"
+
+  local p_root
+  p_root="$(get_provider_root "$provider")"
+  if [[ -z "$p_root" ]]; then
+    dot_leader "$provider" "unknown provider" "${C_RED}unknown provider${C_RESET}"
+    return 1
+  fi
+
+  local project_root
+  project_root="$(get_project_root)"
+  local skill_dname="${skill_path##*/}"
+
+  local removed=0
+  local target="$project_root/$p_root/skills/$skill_dname"
+  if [[ -L "$target" || -d "$target" ]]; then
+    rm -rf "$target"
+    removed=1
+  fi
+
+  remove_git_exclusion_item "$project_root" "${p_root}/skills/${skill_dname}"
+  rmdir "$project_root/$p_root/skills" 2>/dev/null || true
+  rmdir "$project_root/$p_root" 2>/dev/null || true
+
+  if [[ $removed -eq 1 ]]; then
+    dot_leader "$provider" "removed" "${C_DIM}removed${C_RESET}"
+  else
+    dot_leader "$provider" "clean" "${C_DIM}clean${C_RESET}"
+  fi
+}
+
+# --- Command: Clean Single Provider (All Items) ---
 clean_provider() {
   local provider
   provider="$(resolve_provider "$1")"
@@ -319,13 +709,16 @@ clean_provider() {
 
   local removed=0
 
-  if [[ -L "$a_dest" ]]; then rm "$a_dest"; removed=1; elif [[ -d "$a_dest" ]]; then find "$a_dest" -type l -exec rm {} +; removed=1; fi
-  if [[ -L "$s_dest" ]]; then rm "$s_dest"; removed=1; elif [[ -d "$s_dest" ]]; then find "$s_dest" -type l -exec rm {} +; removed=1; fi
+  if [[ -L "$a_dest" ]]; then rm -f "$a_dest"; removed=1; elif [[ -d "$a_dest" ]]; then find "$a_dest" -type l -exec rm {} +; removed=1; fi
+  if [[ -L "$s_dest" ]]; then rm -f "$s_dest"; removed=1; elif [[ -d "$s_dest" ]]; then find "$s_dest" -type l -exec rm {} +; removed=1; fi
   if [[ "$provider" == "cursor" ]]; then
     local r_dest="$project_root/$p_root/rules"
-    if [[ -L "$r_dest" ]]; then rm "$r_dest"; removed=1; elif [[ -d "$r_dest" ]]; then find "$r_dest" -type l -exec rm {} +; removed=1; fi
+    if [[ -L "$r_dest" ]]; then rm -f "$r_dest"; removed=1; elif [[ -d "$r_dest" ]]; then find "$r_dest" -type l -exec rm {} +; removed=1; fi
+    rmdir "$r_dest" 2>/dev/null || true
   fi
 
+  rmdir "$a_dest" 2>/dev/null || true
+  rmdir "$s_dest" 2>/dev/null || true
   rmdir "$project_root/$p_root" 2>/dev/null || true
   remove_git_exclusion "$project_root" "$provider" "$p_root"
 
@@ -337,12 +730,96 @@ clean_provider() {
 }
 
 cmd_clean() {
-  local target_provider
-  target_provider="$(resolve_provider "${1:-all}")"
+  local target_provider="all"
+  local clean_agent=""
+  local clean_skill=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      agent|--agent)
+        shift
+        if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
+          clean_agent="$1"
+          shift
+        else
+          echo -e "\n${C_RED}Error: Missing agent name after '$1'${C_RESET}\n"
+          return 1
+        fi
+        ;;
+      --agent=*)
+        clean_agent="${1#*=}"
+        shift
+        ;;
+      skill|--skill)
+        shift
+        if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
+          clean_skill="$1"
+          shift
+        else
+          echo -e "\n${C_RED}Error: Missing skill name after '$1'${C_RESET}\n"
+          return 1
+        fi
+        ;;
+      --skill=*)
+        clean_skill="${1#*=}"
+        shift
+        ;;
+      gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a)
+        target_provider="$(resolve_provider "$1")"
+        shift
+        ;;
+      *)
+        shift
+        ;;
+    esac
+  done
+
   local project_root
   project_root="$(get_project_root)"
   local display_root
   display_root="$(clean_path "$project_root")"
+
+  if [[ -n "$clean_agent" ]]; then
+    local agent_path
+    agent_path="$(find_agent_file "$clean_agent")" || true
+    if [[ -z "$agent_path" || ! -f "$agent_path" ]]; then
+      agent_path="$PRISM_HOME/agents/${clean_agent}.md"
+    fi
+    local agent_title
+    agent_title="$(get_agent_title "$agent_path")"
+
+    echo -e "\n${C_BOLD}Cleaning agent '${agent_title}' from${C_RESET} ${display_root}\n"
+    if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
+      for p in "${SUPPORTED_PROVIDERS[@]}"; do
+        clean_single_agent "$p" "$agent_path"
+      done
+    else
+      clean_single_agent "$target_provider" "$agent_path"
+    fi
+    echo ""
+    return 0
+  fi
+
+  if [[ -n "$clean_skill" ]]; then
+    local skill_path
+    skill_path="$(find_skill_dir "$clean_skill")" || true
+    if [[ -z "$skill_path" || ! -d "$skill_path" ]]; then
+      skill_path="$PRISM_HOME/skills/${clean_skill}"
+    fi
+    local skill_title
+    skill_title="$(get_skill_title "$skill_path")"
+
+    echo -e "\n${C_BOLD}Cleaning skill '${skill_title}' from${C_RESET} ${display_root}\n"
+    if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
+      for p in "${SUPPORTED_PROVIDERS[@]}"; do
+        clean_single_skill "$p" "$skill_path"
+      done
+    else
+      clean_single_skill "$target_provider" "$skill_path"
+    fi
+    echo ""
+    return 0
+  fi
 
   echo -e "\n${C_BOLD}Cleaning prism from${C_RESET} ${display_root}\n"
 
@@ -367,7 +844,7 @@ cmd_list() {
       if [[ -f "$f" ]]; then
         local base name
         base="$(basename "$f")"
-        name=$(grep -E "^name:" "$f" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//' || echo "$base")
+        name=$(grep -E "^name:" "$f" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//; s/[[:space:]]*$//' || echo "$base")
         dot_leader "$name" "$base" "${C_DIM}${base}${C_RESET}"
       fi
     done
@@ -421,9 +898,13 @@ cmd_uninstall() {
 # --- Help ---
 show_help() {
   echo -e "\n${C_BOLD}Prism CLI${C_RESET} ${C_DIM}v${PRISM_VERSION}${C_RESET}"
-  echo -e "  prism [provider]              ${C_DIM}Apply to project (stealth, default: all)${C_RESET}"
-  echo -e "  prism --track [provider]      ${C_DIM}Apply and track in Git to share with team [-t]${C_RESET}"
+  echo -e "  prism [provider]              ${C_DIM}Apply all agents & skills (stealth, default: all)${C_RESET}"
+  echo -e "  prism --track [provider]      ${C_DIM}Apply all and track in Git to share with team [-t]${C_RESET}"
+  echo -e "  prism agent <name> [provider] ${C_DIM}Apply specific agent only${C_RESET}"
+  echo -e "  prism skill <name> [provider] ${C_DIM}Apply specific skill only${C_RESET}"
   echo -e "  prism clean [provider]        ${C_DIM}Clean from project (default: all) [rm]${C_RESET}"
+  echo -e "  prism clean agent <name>      ${C_DIM}Remove specific agent from project${C_RESET}"
+  echo -e "  prism clean skill <name>      ${C_DIM}Remove specific skill from project${C_RESET}"
   echo -e "  prism status                  ${C_DIM}View status across providers      [st]${C_RESET}"
   echo -e "  prism list                    ${C_DIM}List all agents & skills          [ls, l]${C_RESET}"
   echo -e "  prism install                 ${C_DIM}Install to ~/.local/bin/prism     [i]${C_RESET}"
@@ -446,7 +927,8 @@ case "${1:-}" in
     cmd_uninstall
     ;;
   clean|rm|u|unsync|unlink)
-    cmd_clean "${2:-all}"
+    shift
+    cmd_clean "$@"
     ;;
   status|st)
     cmd_status
@@ -461,7 +943,7 @@ case "${1:-}" in
     shift
     cmd_apply "$@"
     ;;
-  gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a|--track|-t|--shared|--public|track|shared)
+  agent|skill|--agent*|--skill*|gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a|--track|-t|--shared|--public|track|shared)
     cmd_apply "$@"
     ;;
   "")
