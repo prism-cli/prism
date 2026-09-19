@@ -4,7 +4,7 @@ set -euo pipefail
 # Dynamically resolve the Prism root directory (parent of bin/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PRISM_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
-PRISM_VERSION="0.1.0"
+PRISM_VERSION="0.1.1"
 
 # --- ANSI Color Palette ---
 C_YELLOW="\033[33;1m"
