@@ -3,7 +3,21 @@
 Refract your personal developer agents and skills across AI assistants.
 
 > [!NOTE]
-> Fork this template to version-control your personal setup across machines.
+> Fork this template to version-control your personal AI setup across machines.
+
+## What is this?
+
+Every AI coding tool expects agent personas and skill runbooks in different hidden folders (`.cursor/`, `.claude/`, `.agents/`, etc.). 
+
+**Prism** is a single central vault (`~/prism`) for all your custom developer instructions. The CLI links them into whichever AI assistants you use in any repository—instantly and without polluting Git.
+
+## How it works
+
+1. **One Vault**: You maintain universal Markdown agents (`agents/*.md`) and skills (`skills/*/SKILL.md`) in `~/prism`.
+2. **Native Symlinks**: Running `prism` in any project creates symlinks mapped to each provider's native discovery folder.
+3. **Zero Git Noise**: Created paths are automatically registered in `.git/info/exclude`, so your private personas are never tracked or committed.
+
+## Quick Start
 
 ```bash
 # 1. Clone your fork
