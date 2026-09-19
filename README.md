@@ -6,7 +6,7 @@ Fork this template to version-control your personal setup across machines.
 
 ## Why Prism?
 
-| Without Prism | With Prism |
+| Without Prism ❌ | With Prism ✅ |
 | :--- | :--- |
 | Copy-pasting AI configs across projects | Run `prism` once |
 | Updating rules in 20 different repos | Edit once in `~/prism`, updated everywhere |
