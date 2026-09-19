@@ -3,9 +3,9 @@ name: code-review
 description: Run a comprehensive code review checking security, modularity, and test coverage.
 ---
 
-# Code Review Skill
+# [Example] Code Review Skill
 
-Use this skill when reviewing code changes, pull requests, or refactoring plans.
+> Example skill workflow. Customize these steps with your team's code review checklist.
 
 ## Steps
 1. **Analyze Diff**: Inspect modified files for unexpected changes or regressions.

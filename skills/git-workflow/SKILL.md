@@ -3,9 +3,9 @@ name: git-workflow
 description: Standard workflow for branch management, conventional commits, and atomic PRs.
 ---
 
-# Git Workflow Skill
+# [Example] Git Workflow Skill
 
-Use this skill when staging, committing, or preparing pull requests.
+> Example skill workflow. Customize these guidelines with your team's branching and commit standards.
 
 ## Guidelines
 1. **Conventional Commits**: Use format `<type>(<scope>): <short description>` (e.g. `feat:`, `fix:`, `refactor:`).

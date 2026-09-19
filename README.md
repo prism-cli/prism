@@ -13,7 +13,7 @@ Every AI coding tool expects agent personas and skill runbooks in different hidd
 
 ## How it works
 
-1. **One Vault**: You maintain universal Markdown agents (`agents/*.md`) and skills (`skills/*/SKILL.md`) in `~/prism`.
+1. **One Vault**: You keep your Markdown agents (`agents/*.md`) and skills (`skills/*/SKILL.md`) in `~/prism`. This repo includes example templates to get started.
 2. **Native Symlinks**: Running `prism` in any project creates symlinks mapped to each provider's native discovery folder.
 3. **Zero Git Noise**: Created paths are automatically registered in `.git/info/exclude`, so your private personas are never tracked or committed.
 
