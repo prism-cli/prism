@@ -28,14 +28,15 @@ Maintain only **`agents/`** and **`skills/`** in your central vault. The CLI scr
 
 ## 🌐 Provider Destination Paths
 
-When synced to any project workspace, Mindset links your agents & skills into the provider's default structure:
+When synced to any project workspace, Mindset links your agents & skills into each provider's native directory structure:
 
 | Provider | Agents Location | Skills Location | Git Ignore Scope |
 | :--- | :--- | :--- | :--- |
-| **Gemini / Antigravity** | `.agents/agents/` | `.agents/skills/` | `.agents/` |
+| **Cursor** | `.cursor/agents/` & `.cursor/rules/` | `.cursor/skills/` | `.cursor/` |
 | **Claude** | `.claude/agents/` | `.claude/skills/` | `.claude/` |
 | **Codex** | `.codex/agents/` | `.codex/skills/` | `.codex/` |
 | **Grok** | `.grok/agents/` | `.grok/skills/` | `.grok/` |
+| **Gemini / Antigravity** | `.agents/agents/` | `.agents/skills/` | `.agents/` |
 
 ---
 
@@ -61,10 +62,11 @@ Navigate to any project repository:
 
 ```bash
 # Sync specific provider
-mindset gemini       # (or mindset antigravity)
+mindset cursor
 mindset claude
 mindset codex
 mindset grok
+mindset gemini       # (alias: mindset antigravity)
 
 # Sync all providers at once
 mindset all
@@ -76,7 +78,7 @@ mindset status
 mindset list
 
 # Unsync from the project
-mindset unsync gemini
+mindset unsync cursor
 mindset unsync all
 
 # Remove shell aliases

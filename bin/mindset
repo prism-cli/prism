@@ -20,7 +20,7 @@ sym_node="${C_CYAN}◈${C_RESET}"
 sym_active="${C_DIM}──${C_RESET}${C_GREEN}●${C_RESET}"
 sym_inactive="${C_DIM}──○${C_RESET}"
 
-SUPPORTED_PROVIDERS=("gemini" "claude" "codex" "grok")
+SUPPORTED_PROVIDERS=("gemini" "claude" "codex" "grok" "cursor")
 
 # Convert absolute path to ~/relative for clean display
 clean_path() {
@@ -38,12 +38,14 @@ clean_path() {
 # claude                 -> .claude/
 # codex                  -> .codex/
 # grok                   -> .grok/
+# cursor                 -> .cursor/
 get_provider_root() {
   case "$1" in
     gemini|antigravity) echo ".agents" ;;
     claude)             echo ".claude" ;;
     codex)              echo ".codex" ;;
     grok)               echo ".grok" ;;
+    cursor)             echo ".cursor" ;;
     *)                  echo "" ;;
   esac
 }
@@ -151,6 +153,9 @@ sync_provider() {
   # Link agents and skills
   if [[ -d "$agents_src" ]]; then
     safe_link_dir "$agents_src" "$agents_dest"
+    if [[ "$provider" == "cursor" ]]; then
+      safe_link_dir "$agents_src" "$project_root/$p_root/rules"
+    fi
   fi
 
   if [[ -d "$skills_src" ]]; then
@@ -236,6 +241,10 @@ unsync_provider() {
 
   if [[ -L "$a_dest" ]]; then rm "$a_dest"; removed=1; elif [[ -d "$a_dest" ]]; then find "$a_dest" -type l -exec rm {} +; removed=1; fi
   if [[ -L "$s_dest" ]]; then rm "$s_dest"; removed=1; elif [[ -d "$s_dest" ]]; then find "$s_dest" -type l -exec rm {} +; removed=1; fi
+  if [[ "$provider" == "cursor" ]]; then
+    local r_dest="$project_root/$p_root/rules"
+    if [[ -L "$r_dest" ]]; then rm "$r_dest"; removed=1; elif [[ -d "$r_dest" ]]; then find "$r_dest" -type l -exec rm {} +; removed=1; fi
+  fi
 
   # If parent provider folder is now empty, clean it up
   rmdir "$project_root/$p_root" 2>/dev/null || true
@@ -371,7 +380,7 @@ show_help() {
   echo -e "  mindset list               ${C_DIM}List all agents & skills in your vault${C_RESET}"
   echo -e "  mindset install            ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}"
   echo -e "  mindset uninstall          ${C_DIM}Remove shell aliases (Zsh, Fish)${C_RESET}"
-  echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} gemini (antigravity), claude, codex, grok, all\n"
+  echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} gemini (antigravity), claude, codex, grok, cursor, all\n"
 }
 
 # --- CLI Router ---
@@ -397,7 +406,7 @@ case "${1:-}" in
   sync)
     cmd_sync "${2:-gemini}"
     ;;
-  gemini|antigravity|claude|codex|grok|all)
+  gemini|antigravity|claude|codex|grok|cursor|all)
     cmd_sync "$1"
     ;;
   "")
