@@ -62,6 +62,7 @@ Applying prism to ~/Sites/my-project
 | `prism clean` | `prism rm` | Unlink all assistants from project |
 | `prism clean <provider>` | `prism rm c` | Unlink a specific assistant |
 | `prism install` / `uninstall` | `i` / `ui` | Setup or remove CLI from `~/.local/bin` |
+| `prism version` | `-v` | Print version |
 
 ## Contributing
 

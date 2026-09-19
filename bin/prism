@@ -4,6 +4,7 @@ set -euo pipefail
 # Dynamically resolve the Prism root directory (parent of bin/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PRISM_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
+PRISM_VERSION="0.1.0"
 
 # --- ANSI Color Palette ---
 C_YELLOW="\033[33;1m"
@@ -411,13 +412,14 @@ cmd_uninstall() {
 
 # --- Help ---
 show_help() {
-  echo -e "\n${C_BOLD}Prism CLI${C_RESET}"
+  echo -e "\n${C_BOLD}Prism CLI${C_RESET} ${C_DIM}v${PRISM_VERSION}${C_RESET}"
   echo -e "  prism [provider]              ${C_DIM}Apply to project (default: all)   [apply]${C_RESET}"
   echo -e "  prism clean [provider]        ${C_DIM}Clean from project (default: all) [rm]${C_RESET}"
   echo -e "  prism status                  ${C_DIM}View status across providers      [st]${C_RESET}"
   echo -e "  prism list                    ${C_DIM}List all agents & skills          [ls, l]${C_RESET}"
   echo -e "  prism install                 ${C_DIM}Install shell aliases             [i]${C_RESET}"
   echo -e "  prism uninstall               ${C_DIM}Remove shell aliases              [ui]${C_RESET}"
+  echo -e "  prism version                 ${C_DIM}Print version                     [-v, --version]${C_RESET}"
   echo -e "\n  ${C_BOLD}Shortcuts:${C_RESET}"
   echo -e "    ${C_CYAN}st${C_RESET} = status, ${C_CYAN}ls${C_RESET} = list, ${C_CYAN}clean${C_RESET} / ${C_CYAN}rm${C_RESET} = remove"
   echo -e "    ${C_CYAN}g${C_RESET} = gemini, ${C_CYAN}c${C_RESET} = claude, ${C_CYAN}cx${C_RESET} = codex, ${C_CYAN}gk${C_RESET} = grok, ${C_CYAN}cr${C_RESET} = cursor, ${C_CYAN}a${C_RESET} = all\n"
@@ -425,6 +427,9 @@ show_help() {
 
 # --- CLI Router ---
 case "${1:-}" in
+  version|-v|--version|v)
+    echo "prism v${PRISM_VERSION}"
+    ;;
   install|i)
     cmd_install
     ;;
