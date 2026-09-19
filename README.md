@@ -2,12 +2,35 @@
 
 > Single source of truth for your personal developer mindset, AI agent configurations, and standards across all AI providers.
 
-## Architecture
+---
+
+## 🎨 Laravel-Style Terminal UI
+
+Mindset features a high-contrast, polished Laravel Artisan-style CLI with badges, dynamic dot-leaders, agent tree visualization, and millisecond execution timers.
+
+```terminal
+   SYNC   Syncing antigravity to project
+  target  /Users/dasun/projects/my-app
+
+  antigravity (.agents/agents) .................................. SYNCED
+  stealth-mode ............................................ GIT EXCLUDED
+
+   AGENTS   Active subagents available in workspace
+    ├── agent-1.md ....... Autonomous code quality reviewer and secur...
+    ├── agent-2.md ....... QA Automation specialist that authors comp...
+    └── agent-3.md ....... Systems architect and technical writer who...
+
+   DONE   Mindset synced successfully in 84ms
+```
+
+---
+
+## 📦 Directory Structure
 
 ```
 ~/mindset/
 ├── bin/
-│   └── mindset              # CLI management tool
+│   └── mindset              # Executive CLI tool
 ├── antigravity/
 │   └── agents/              # Antigravity subagent markdown definitions
 │       ├── agent-1.md       # Code Reviewer & Security Auditor
@@ -18,36 +41,49 @@
 └── claude/                  # Claude Code configurations (.claude/)
 ```
 
-## Setup & Installation
+---
 
-Run once to register shell aliases for **Zsh**, **Bash**, and **Fish**:
+## 🚀 Installation
+
+Run once to register shell integrations for **Zsh**, **Bash**, and **Fish**:
 
 ```bash
 ~/mindset/bin/mindset install
 ```
 
-Then reload your shell (`source ~/.zshrc` or `source ~/.config/fish/config.fish`).
+Then reload your shell:
+```bash
+source ~/.zshrc                     # for Zsh
+source ~/.config/fish/config.fish   # for Fish
+```
 
-## Usage in Projects
+---
+
+## 💻 Usage
 
 Navigate to any project repository and run:
 
 ```bash
-# Injects your Antigravity agents (default)
+# Sync Antigravity agents (default)
+mindset sync antigravity
+# or simply:
 mindset antigravity
 
-# Injects Cursor rules
-mindset cursor
+# Sync other providers
+mindset sync cursor
+mindset sync claude
 
-# Injects Claude settings
-mindset claude
-
-# Check what is currently linked
+# Check sync status across all providers
 mindset status
 
-# Cleanly remove links
-mindset unlink antigravity
+# List all available mindset agents in your vault
+mindset list
+
+# Unsync from the current project
+mindset unsync antigravity
 ```
 
-## Stealth Mode (Git Ignored)
-`mindset` automatically registers symlinks in `.git/info/exclude`, so your personal configuration is **never committed** to the project repository.
+---
+
+## 🛡️ Stealth Mode (Untracked by Git)
+`mindset` automatically registers symlinks in `.git/info/exclude`. Your personal developer mindset is fully active, but **never committed or visible in `git status`**.
