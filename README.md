@@ -2,8 +2,7 @@
 
 Sync your personal AI developer agents and skills across Cursor, Claude, Codex, Grok, and Gemini from one central vault.
 
-> [!NOTE]
-> Fork this template to version-control your personal setup across machines.
+Fork this template to version-control your personal setup across machines.
 
 ## Quick Start
 
