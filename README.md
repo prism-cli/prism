@@ -1,21 +1,26 @@
 # Prism
 
-Refract your personal developer agents and skills across AI assistants.
+Sync your personal AI agents and skills across all coding tools from one central vault.
+
+```
+~/prism (your vault)
+  ├── agents/      ──►  .cursor/   .claude/   .codex/   .grok/   .agents/
+  └── skills/      ──►  (auto-symlinked & hidden from git status)
+```
 
 > [!NOTE]
-> Fork this template to version-control your personal AI setup across machines.
+> This repository is a starter template. Fork it to build and version-control your own AI developer environment across machines.
 
-## What is this?
+## Why Prism?
 
-Every AI coding tool expects agent personas and skill runbooks in different hidden folders (`.cursor/`, `.claude/`, `.agents/`, etc.). 
+Every AI coding tool looks in a different folder:
+- Cursor looks in `.cursor/`
+- Claude looks in `.claude/`
+- Codex looks in `.codex/`
+- Grok looks in `.grok/`
+- Gemini / Antigravity looks in `.agents/`
 
-**Prism** is a single central vault (`~/prism`) for all your custom developer instructions. The CLI links them into whichever AI assistants you use in any repository—instantly and without polluting Git.
-
-## How it works
-
-1. **One Vault**: You keep your Markdown agents (`agents/*.md`) and skills (`skills/*/SKILL.md`) in `~/prism`. This repo includes example templates to get started.
-2. **Native Symlinks**: Running `prism` in any project creates symlinks mapped to each provider's native discovery folder.
-3. **Zero Git Noise**: Created paths are automatically registered in `.git/info/exclude`, so your private personas are never tracked or committed.
+Instead of copying and pasting instructions across every project and tool, keep your personas and runbooks once in `~/prism`. Running `prism` links them into whichever tool you use—instantly and without polluting Git.
 
 ## Quick Start
 
@@ -23,15 +28,15 @@ Every AI coding tool expects agent personas and skill runbooks in different hidd
 # 1. Clone your fork
 git clone https://github.com/<your-username>/prism.git ~/prism
 
-# 2. Install CLI
+# 2. Install CLI to ~/.local/bin
 ~/prism/bin/prism install
 
-# 3. Apply to any project
+# 3. In any project, run:
 prism
 ```
 
 ```
-Applying prism to ~/Sites/project
+Applying prism to ~/Sites/my-project
 
   gemini ................................... active (3 agents, 2 skills)
   claude ................................... active (3 agents, 2 skills)
@@ -40,30 +45,25 @@ Applying prism to ~/Sites/project
   cursor ................................... active (3 agents, 2 skills)
 ```
 
-## Providers
+## How It Works
 
-Prism symlinks your `~/prism/agents` and `~/prism/skills` into native directories and silently excludes them via `.git/info/exclude`.
-
-| Provider | Shortcut | Target Path |
-| :--- | :---: | :--- |
-| **Cursor** | `cr` | `.cursor/agents/`, `.cursor/rules/`, `.cursor/skills/` |
-| **Claude** | `c` | `.claude/agents/`, `.claude/skills/` |
-| **Codex** | `cx` | `.codex/agents/`, `.codex/skills/` |
-| **Grok** | `gk` | `.grok/agents/`, `.grok/skills/` |
-| **Gemini** | `g` | `.agents/agents/`, `.agents/skills/` |
+1. **One Vault (`~/prism`)**: Edit your agents (`agents/*.md`) and skills (`skills/*/SKILL.md`) in one place. Starter examples are included.
+2. **Native Mapping**: `prism` creates symlinks in your project matching each AI assistant's expected structure.
+3. **Zero Git Noise**: Symlinks are automatically registered in `.git/info/exclude`. Your team never sees your personal setup in PRs or `git status`.
 
 ## Commands
 
 | Command | Shortcut | Description |
 | :--- | :---: | :--- |
-| `prism` | `prism a` | Apply all providers |
-| `prism <provider>` | `prism cr`, `prism c`, etc. | Apply specific provider |
-| `prism status` | `prism st` | Check project status |
-| `prism list` | `prism ls` | List agents and skills |
-| `prism clean` | `prism rm` | Remove links from project |
-| `prism clean <provider>` | `prism rm c` | Remove links for specific provider |
-| `prism install` / `uninstall` | `i` / `ui` | Setup or remove CLI integration |
+| `prism` | `prism a` | Link all AI assistants into current project |
+| `prism <provider>` | `prism cr`, `prism c`, etc. | Link a single assistant (`cr`, `c`, `cx`, `gk`, `g`) |
+| `prism status` | `prism st` | View active assistants in current project |
+| `prism list` | `prism ls` | List all available agents and skills in your vault |
+| `prism clean` | `prism rm` | Unlink all assistants from project |
+| `prism clean <provider>` | `prism rm c` | Unlink a specific assistant |
+| `prism install` / `uninstall` | `i` / `ui` | Setup or remove CLI from `~/.local/bin` |
 
 ## Contributing
 
-Pull requests are welcome to add new providers or improve templates.
+Pull requests are welcome to add new providers or improve starter templates.
+
