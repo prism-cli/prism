@@ -4,6 +4,14 @@ Sync your personal AI developer agents and skills across Cursor, Claude, Codex, 
 
 Fork this template to version-control your personal setup across machines.
 
+## Why Prism?
+
+| Without Prism | With Prism |
+| :--- | :--- |
+| Copy-pasting AI configs across projects | Run `prism` once |
+| Updating rules in 20 different repos | Edit once in `~/prism`, updated everywhere |
+| Personal AI files leaking into git commits | Silently ignored via `.git/info/exclude` |
+
 ## How it Works
 
 1. Keep your custom agents (`agents/*.md`) and skills (`skills/*/SKILL.md`) once in `~/prism`.
