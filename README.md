@@ -4,23 +4,19 @@
 
 ---
 
-## 🎨 Laravel-Style Terminal UI
-
-Mindset features a high-contrast, polished Laravel Artisan-style CLI with badges, dynamic dot-leaders, agent tree visualization, and millisecond execution timers.
+## ⚡ Visual CLI Experience
 
 ```terminal
-   SYNC   Syncing antigravity to project
-  target  /Users/dasun/projects/my-app
+⚡ Syncing my mindset to ~/projects/my-app
+  ◈ antigravity ──● synced (3 agents)
 
-  antigravity (.agents/agents) .................................. SYNCED
-  stealth-mode ............................................ GIT EXCLUDED
+⚡ My mindset status in ~/projects/my-app
+  ◈ antigravity ──● in sync (3 agents)
+  ◈ cursor      ──○ not synced
+  ◈ claude      ──○ not synced
 
-   AGENTS   Active subagents available in workspace
-    ├── agent-1.md ....... Autonomous code quality reviewer and secur...
-    ├── agent-2.md ....... QA Automation specialist that authors comp...
-    └── agent-3.md ....... Systems architect and technical writer who...
-
-   DONE   Mindset synced successfully in 84ms
+⚡ Unsyncing my mindset from ~/projects/my-app
+  ◈ antigravity ──○ unsynced
 ```
 
 ---
@@ -45,7 +41,7 @@ Mindset features a high-contrast, polished Laravel Artisan-style CLI with badges
 
 ## 🚀 Installation
 
-Run once to register shell integrations for **Zsh**, **Bash**, and **Fish**:
+Run once to register shell integrations for **Zsh** and **Fish**:
 
 ```bash
 ~/mindset/bin/mindset install
@@ -59,19 +55,15 @@ source ~/.config/fish/config.fish   # for Fish
 
 ---
 
-## 💻 Usage
+## 💻 Commands
 
-Navigate to any project repository and run:
+Navigate to any project repository:
 
 ```bash
 # Sync Antigravity agents (default)
 mindset sync antigravity
 # or simply:
 mindset antigravity
-
-# Sync other providers
-mindset sync cursor
-mindset sync claude
 
 # Check sync status across all providers
 mindset status
@@ -85,5 +77,5 @@ mindset unsync antigravity
 
 ---
 
-## 🛡️ Stealth Mode (Untracked by Git)
-`mindset` automatically registers symlinks in `.git/info/exclude`. Your personal developer mindset is fully active, but **never committed or visible in `git status`**.
+## 🛡️ Git Protection
+`mindset` automatically and silently registers symlinks in `.git/info/exclude`. Your personal developer mindset is fully active, but **never committed or visible in `git status`**.

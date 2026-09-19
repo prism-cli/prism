@@ -5,55 +5,29 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MINDSET_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# --- Laravel Style ANSI Color Palette ---
-BG_BLUE="\033[44;37;1m"      #  INFO 
-BG_GREEN="\033[42;30;1m"     #  DONE 
-BG_YELLOW="\033[43;30;1m"    #  WARN 
-BG_RED="\033[41;37;1m"       #  FAIL 
-BG_GRAY="\033[100;37;1m"     #  STATUS 
-BG_CYAN="\033[46;30;1m"      #  AGENTS 
-BG_MAGENTA="\033[45;37;1m"   #  SYNC 
+# --- ANSI Color Palette ---
+C_YELLOW="\033[33;1m"
+C_CYAN="\033[36;1m"
+C_GREEN="\033[32;1m"
+C_RED="\033[31;1m"
+C_DIM="\033[90m"
+C_BOLD="\033[1m"
+C_RESET="\033[0m"
 
-FG_GREEN="\033[32;1m"
-FG_YELLOW="\033[33;1m"
-FG_RED="\033[31;1m"
-FG_CYAN="\033[36m"
-FG_WHITE="\033[37;1m"
+# Formatting helpers
+sym_bolt="${C_YELLOW}⚡${C_RESET}"
+sym_node="${C_CYAN}◈${C_RESET}"
+sym_active="${C_DIM}──${C_RESET}${C_GREEN}●${C_RESET}"
+sym_inactive="${C_DIM}──○${C_RESET}"
 
-DIM="\033[90m"
-BOLD="\033[1m"
-RESET="\033[0m"
-
-# --- Laravel Layout & Component Primitives ---
-badge_info()    { echo -e "\n  ${BG_BLUE} INFO ${RESET}  $1"; }
-badge_done()    { echo -e "\n  ${BG_GREEN} DONE ${RESET}  $1\n"; }
-badge_warn()    { echo -e "\n  ${BG_YELLOW} WARN ${RESET}  $1"; }
-badge_fail()    { echo -e "\n  ${BG_RED} FAIL ${RESET}  $1\n"; }
-badge_status()  { echo -e "\n  ${BG_GRAY} STATUS ${RESET}  $1\n"; }
-badge_agents()  { echo -e "\n  ${BG_CYAN} AGENTS ${RESET}  $1"; }
-badge_sync()    { echo -e "\n  ${BG_MAGENTA} SYNC ${RESET}  $1"; }
-
-# Dynamic Dot Leader (Terminal width responsive)
-dot_leader() {
-  local left="$1"
-  local right="$2"
-  local term_width
-  term_width=$(tput cols 2>/dev/null || echo 68)
-  if (( term_width > 72 )); then term_width=72; fi
-
-  # Strip ANSI color escape codes to calculate visual string lengths
-  local left_clean right_clean
-  left_clean=$(echo -e "$left" | sed $'s/\033\\[[0-9;]*m//g')
-  right_clean=$(echo -e "$right" | sed $'s/\033\\[[0-9;]*m//g')
-
-  local total_len=$(( ${#left_clean} + ${#right_clean} + 4 ))
-  local dot_count=$(( term_width - total_len ))
-  if (( dot_count < 2 )); then dot_count=2; fi
-
-  local dots
-  dots=$(printf '%*s' "$dot_count" '' | tr ' ' '.')
-
-  echo -e "  ${left} ${DIM}${dots}${RESET} ${right}"
+# Convert absolute path to ~/relative for clean display
+clean_path() {
+  local path="$1"
+  if [[ "$path" == "$HOME"* ]]; then
+    echo "~${path#$HOME}"
+  else
+    echo "$path"
+  fi
 }
 
 # --- Provider Registry ---
@@ -83,7 +57,18 @@ get_project_root() {
   fi
 }
 
-# --- Git Stealth Protection ---
+count_agents() {
+  local dir="$1"
+  if [[ -d "$dir" ]]; then
+    local count
+    count=$(find "$dir" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+    echo "$count"
+  else
+    echo "0"
+  fi
+}
+
+# --- Git Stealth Protection (Silent Default) ---
 ensure_git_excluded() {
   local project_root="$1"
   local target_rel="$2"
@@ -95,12 +80,7 @@ ensure_git_excluded() {
       echo "" >> "$exclude_file"
       echo "# [mindset] Local developer AI preferences (untracked)" >> "$exclude_file"
       echo "$target_rel" >> "$exclude_file"
-      dot_leader "${DIM}stealth-mode${RESET}" "${FG_GREEN}GIT EXCLUDED${RESET}"
-    else
-      dot_leader "${DIM}stealth-mode${RESET}" "${DIM}ALREADY EXCLUDED${RESET}"
     fi
-  else
-    dot_leader "${DIM}stealth-mode${RESET}" "${FG_YELLOW}NOT A GIT REPO${RESET}"
   fi
 }
 
@@ -113,15 +93,11 @@ remove_git_exclusion() {
     sed -i.bak "/# \[mindset\]/d" "$exclude_file" 2>/dev/null || true
     sed -i.bak "\|^${target_rel}\$|d" "$exclude_file" 2>/dev/null || true
     rm -f "${exclude_file}.bak"
-    dot_leader "${DIM}stealth-mode${RESET}" "${FG_GREEN}CLEANED${RESET}"
   fi
 }
 
 # --- Command: Sync Provider ---
 cmd_sync() {
-  local start_time
-  start_time=$(date +%s%N 2>/dev/null || date +%s)
-
   local provider="${1:-antigravity}"
   local source_dir
   local target_rel
@@ -132,8 +108,8 @@ cmd_sync() {
   target_rel="$(get_provider_target "$provider")"
 
   if [[ -z "$source_dir" ]]; then
-    badge_fail "Unknown provider '${provider}'"
-    echo -e "  ${DIM}Supported providers: antigravity, cursor, claude${RESET}\n"
+    echo -e "${sym_bolt} ${C_RED}Unknown provider '${provider}'${C_RESET}"
+    echo -e "  ${C_DIM}Supported: antigravity, cursor, claude${C_RESET}\n"
     exit 1
   fi
 
@@ -143,75 +119,79 @@ cmd_sync() {
 
   project_root="$(get_project_root)"
   target_dir="$project_root/$target_rel"
+  local display_root
+  display_root="$(clean_path "$project_root")"
 
-  badge_sync "Syncing ${BOLD}${provider}${RESET} to project"
-  echo -e "  ${DIM}target${RESET}  ${project_root}\n"
+  echo -e "\n${sym_bolt} ${C_BOLD}Syncing my mindset to${C_RESET} ${display_root}"
 
   mkdir -p "$(dirname "$target_dir")"
 
-  # Collision Detection
+  local agent_count
+  agent_count=$(count_agents "$source_dir")
+  local agent_str="(${agent_count} agents)"
+  if [[ "$agent_count" -eq 1 ]]; then agent_str="(1 agent)"; fi
+
+  # Safe collision detection
   if [[ -L "$target_dir" ]]; then
     local current_target
     current_target="$(readlink "$target_dir")"
     if [[ "$current_target" == "$source_dir" ]]; then
-      dot_leader "${BOLD}${provider}${RESET} ${DIM}(${target_rel})${RESET}" "${FG_GREEN}UP TO DATE${RESET}"
+      echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}in sync${C_RESET} ${C_DIM}${agent_str}${C_RESET}\n"
     else
       ln -sfn "$source_dir" "$target_dir"
-      dot_leader "${BOLD}${provider}${RESET} ${DIM}(${target_rel})${RESET}" "${FG_GREEN}UPDATED${RESET}"
+      echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}${agent_str}${C_RESET}\n"
     fi
   elif [[ -d "$target_dir" ]]; then
-    badge_warn "Local project directory detected at ${target_rel}"
-    echo -e "  ${DIM}Merging files safely without overwriting local project agents...${RESET}\n"
+    # Merge mode without overwriting existing files
+    local synced=0 preserved=0
     for file in "$source_dir"/*; do
       if [[ -f "$file" ]]; then
         local fname
         fname="$(basename "$file")"
         if [[ -e "$target_dir/$fname" ]]; then
-          dot_leader "  ${DIM}├── ${fname}${RESET}" "${FG_YELLOW}PRESERVED (LOCAL)${RESET}"
+          ((preserved++))
         else
           ln -s "$file" "$target_dir/$fname"
-          dot_leader "  ${DIM}├── ${fname}${RESET}" "${FG_GREEN}SYNCED${RESET}"
+          ((synced++))
         fi
       fi
     done
+    echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}merged${C_RESET} ${C_DIM}(${synced} synced, ${preserved} local preserved)${C_RESET}\n"
   else
     ln -s "$source_dir" "$target_dir"
-    dot_leader "${BOLD}${provider}${RESET} ${DIM}(${target_rel})${RESET}" "${FG_GREEN}SYNCED${RESET}"
+    echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}${agent_str}${C_RESET}\n"
   fi
 
-  # Apply Git stealth
+  # Silently apply Git exclusion
   ensure_git_excluded "$project_root" "$target_rel"
+}
 
-  # List active agents if Antigravity
-  if [[ "$provider" == "antigravity" ]] && [[ -d "$source_dir" ]]; then
-    badge_agents "Active subagents available in workspace"
-    local files=("$source_dir"/*.md)
-    local total=${#files[@]}
-    local i=0
-    for f in "${files[@]}"; do
-      if [[ -f "$f" ]]; then
-        ((i++))
-        local base
-        base="$(basename "$f")"
-        local desc
-        desc=$(grep -E "^description:" "$f" 2>/dev/null | head -n1 | sed -E 's/description:[[:space:]]*//' | cut -c1-42 || echo "")
-        if [[ -n "$desc" ]]; then desc="${desc}..."; fi
+# --- Command: Status ---
+cmd_status() {
+  local project_root
+  project_root="$(get_project_root)"
+  local display_root
+  display_root="$(clean_path "$project_root")"
 
-        local branch="├──"
-        if (( i == total )); then branch="└──"; fi
-        dot_leader "  ${DIM}${branch}${RESET} ${BOLD}${base}${RESET}" "${DIM}${desc}${RESET}"
-      fi
-    done
-  fi
+  echo -e "\n${sym_bolt} ${C_BOLD}My mindset status in${C_RESET} ${display_root}"
 
-  local end_time elapsed_ms
-  end_time=$(date +%s%N 2>/dev/null || date +%s)
-  if [[ ${#start_time} -gt 10 ]] && [[ ${#end_time} -gt 10 ]]; then
-    elapsed_ms=$(( (end_time - start_time) / 1000000 ))
-    badge_done "Mindset synced successfully in ${elapsed_ms}ms"
-  else
-    badge_done "Mindset synced successfully"
-  fi
+  for p in antigravity cursor claude; do
+    local target_rel target_dir source_dir
+    target_rel="$(get_provider_target "$p")"
+    target_dir="$project_root/$target_rel"
+    source_dir="$(get_provider_source "$p")"
+
+    if [[ -L "$target_dir" ]]; then
+      local agent_count
+      agent_count=$(count_agents "$source_dir")
+      echo -e "  ${sym_node} ${p} ${sym_active} ${C_GREEN}in sync${C_RESET} ${C_DIM}(${agent_count} agents)${C_RESET}"
+    elif [[ -d "$target_dir" ]]; then
+      echo -e "  ${sym_node} ${p} ${sym_active} ${C_YELLOW}merged${C_RESET}"
+    else
+      echo -e "  ${sym_node} ${p} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
+    fi
+  done
+  echo ""
 }
 
 # --- Command: Unsync Provider ---
@@ -224,157 +204,87 @@ cmd_unsync() {
   target_rel="$(get_provider_target "$provider")"
   project_root="$(get_project_root)"
   target_dir="$project_root/$target_rel"
+  local display_root
+  display_root="$(clean_path "$project_root")"
 
-  badge_info "Unsyncing ${BOLD}${provider}${RESET} from project"
-  echo -e "  ${DIM}target${RESET}  ${project_root}\n"
+  echo -e "\n${sym_bolt} ${C_BOLD}Unsyncing my mindset from${C_RESET} ${display_root}"
 
   if [[ -L "$target_dir" ]]; then
     rm "$target_dir"
-    dot_leader "${BOLD}${provider}${RESET} ${DIM}(${target_rel})${RESET}" "${FG_GREEN}REMOVED${RESET}"
     remove_git_exclusion "$project_root" "$target_rel"
-    badge_done "Mindset unsynced cleanly"
+    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}unsynced${C_RESET}\n"
   elif [[ -d "$target_dir" ]]; then
     find "$target_dir" -type l -exec rm {} +
-    dot_leader "${BOLD}${provider}${RESET} ${DIM}(${target_rel})${RESET}" "${FG_GREEN}CLEANED MERGED LINKS${RESET}"
     remove_git_exclusion "$project_root" "$target_rel"
-    badge_done "Mindset unsynced cleanly"
+    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}unsynced (cleaned merged links)${C_RESET}\n"
   else
-    dot_leader "${BOLD}${provider}${RESET} ${DIM}(${target_rel})${RESET}" "${DIM}NOT SYNCED${RESET}"
-    echo ""
+    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}not synced${C_RESET}\n"
   fi
 }
 
-# --- Command: Status ---
-cmd_status() {
-  local project_root
-  project_root="$(get_project_root)"
-
-  badge_status "Mindset provider status for workspace"
-  echo -e "  ${DIM}project${RESET}  ${project_root}\n"
-
-  for p in antigravity cursor claude; do
-    local target_rel target_dir
-    target_rel="$(get_provider_target "$p")"
-    target_dir="$project_root/$target_rel"
-    if [[ -L "$target_dir" ]]; then
-      dot_leader "${BOLD}${p}${RESET} ${DIM}(${target_rel})${RESET}" "${FG_GREEN}IN SYNC${RESET}"
-    elif [[ -d "$target_dir" ]]; then
-      dot_leader "${BOLD}${p}${RESET} ${DIM}(${target_rel})${RESET}" "${FG_YELLOW}MERGED${RESET}"
-    else
-      dot_leader "${DIM}${p}${RESET} ${DIM}(${target_rel})${RESET}" "${DIM}NOT SYNCED${RESET}"
-    fi
-  done
-
-  echo ""
-  local exclude_file="$project_root/.git/info/exclude"
-  if [[ -f "$exclude_file" ]] && grep -qs "\[mindset\]" "$exclude_file"; then
-    echo -e "  ${DIM}Repository: Clean · Untracked files: 0 · Mode: Stealth (git-excluded)${RESET}\n"
-  else
-    echo -e "  ${DIM}Repository: Untracked · Stealth mode: Inactive${RESET}\n"
-  fi
-}
-
-# --- Command: List Available Mindset Agents ---
+# --- Command: List Agents ---
 cmd_list() {
-  badge_agents "Mindset Agents in Central Vault"
-  echo -e "  ${DIM}source${RESET}  ${MINDSET_HOME}/antigravity/agents\n"
+  local display_vault
+  display_vault="$(clean_path "$MINDSET_HOME/antigravity/agents")"
 
-  local files=("$MINDSET_HOME/antigravity/agents"/*.md)
-  local total=${#files[@]}
-  local i=0
+  echo -e "\n${sym_bolt} ${C_BOLD}My mindset agents in${C_RESET} ${display_vault}"
 
-  for f in "${files[@]}"; do
+  for f in "$MINDSET_HOME/antigravity/agents"/*.md; do
     if [[ -f "$f" ]]; then
-      ((i++))
       local base
       base="$(basename "$f")"
       local name
       name=$(grep -E "^name:" "$f" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//' || echo "$base")
-      local desc
-      desc=$(grep -E "^description:" "$f" 2>/dev/null | head -n1 | sed -E 's/description:[[:space:]]*//' || echo "")
-
-      local branch="├──"
-      if (( i == total )); then branch="└──"; fi
-
-      echo -e "  ${DIM}${branch}${RESET} ${BOLD}${name}${RESET} ${DIM}(${base})${RESET}"
-      if [[ -n "$desc" ]]; then
-        echo -e "  ${DIM}│   ${desc}${RESET}"
-      fi
+      echo -e "  ${sym_node} ${C_BOLD}${name}${C_RESET} ${C_DIM}── ${base}${C_RESET}"
     fi
   done
   echo ""
 }
 
-# --- Command: Install (Fish, Bash, Zsh) ---
+# --- Command: Install (Aliases) ---
 cmd_install() {
   local bin_path="$MINDSET_HOME/bin/mindset"
   chmod +x "$bin_path"
 
-  badge_info "Installing Mindset CLI shell integrations"
-  echo ""
+  echo -e "\n${sym_bolt} ${C_BOLD}Installing my mindset CLI shell integrations${C_RESET}"
 
   local zsh_bash_alias="alias mindset=\"$bin_path\""
   local fish_alias="alias mindset '$bin_path'"
 
-  # 1. Zsh
+  # Zsh
   local zshrc="$HOME/.zshrc"
   touch "$zshrc"
   if ! grep -qs "alias mindset=" "$zshrc"; then
     echo -e "\n# Mindset CLI\n$zsh_bash_alias" >> "$zshrc"
-    dot_leader "Zsh shell ${DIM}(~/.zshrc)${RESET}" "${FG_GREEN}INSTALLED${RESET}"
-  else
-    dot_leader "Zsh shell ${DIM}(~/.zshrc)${RESET}" "${DIM}ALREADY INSTALLED${RESET}"
   fi
+  echo -e "  ${sym_node} zsh  ${sym_active} ${C_GREEN}~/.zshrc${C_RESET} ${C_DIM}(alias registered)${C_RESET}"
 
-  # 2. Bash
-  for rc in "$HOME/.bashrc" "$HOME/.bash_profile"; do
-    if [[ -f "$rc" ]]; then
-      if ! grep -qs "alias mindset=" "$rc"; then
-        echo -e "\n# Mindset CLI\n$zsh_bash_alias" >> "$rc"
-        dot_leader "Bash shell ${DIM}(${rc})${RESET}" "${FG_GREEN}INSTALLED${RESET}"
-      else
-        dot_leader "Bash shell ${DIM}(${rc})${RESET}" "${DIM}ALREADY INSTALLED${RESET}"
-      fi
-    fi
-  done
-
-  # 3. Fish Shell
+  # Fish
   local fish_conf="$HOME/.config/fish/config.fish"
   if [[ -d "$HOME/.config/fish" ]] || which fish >/dev/null 2>&1; then
     mkdir -p "$HOME/.config/fish"
     touch "$fish_conf"
     if ! grep -qs "alias mindset" "$fish_conf"; then
       echo -e "\n# Mindset CLI\n$fish_alias" >> "$fish_conf"
-      dot_leader "Fish shell ${DIM}(~/.config/fish/config.fish)${RESET}" "${FG_GREEN}INSTALLED${RESET}"
-    else
-      dot_leader "Fish shell ${DIM}(~/.config/fish/config.fish)${RESET}" "${DIM}ALREADY INSTALLED${RESET}"
     fi
+    echo -e "  ${sym_node} fish ${sym_active} ${C_GREEN}~/.config/fish/config.fish${C_RESET} ${C_DIM}(alias registered)${C_RESET}"
   fi
 
-  badge_done "Installation complete! Reload your shell to use 'mindset'"
-  echo -e "  ${DIM}Run:${RESET} ${FG_CYAN}source ~/.zshrc${RESET} ${DIM}or${RESET} ${FG_CYAN}source ~/.config/fish/config.fish${RESET}\n"
+  echo -e "\n  ${C_DIM}Reload shell to start:${C_RESET} ${C_CYAN}source ~/.zshrc${C_RESET} ${C_DIM}or${RESET} ${C_CYAN}source ~/.config/fish/config.fish${RESET}\n"
 }
 
-# --- Command: Help ---
+# --- Help ---
 show_help() {
-  echo -e "\n  ${BOLD}Mindset CLI${RESET} ${DIM}v1.0.0${RESET}"
-  echo -e "  ${DIM}Sync your personal developer mindset into any project's AI assistants${RESET}\n"
-
-  echo -e "  ${BOLD}USAGE:${RESET}"
-  echo -e "    ${FG_CYAN}mindset${RESET} ${DIM}<command> [options]${RESET}\n"
-
-  echo -e "  ${BOLD}COMMANDS:${RESET}"
-  dot_leader "  ${BOLD}sync${RESET} ${DIM}[provider]${RESET}" "${DIM}Sync mindset to current project (default: antigravity)${RESET}"
-  dot_leader "  ${BOLD}unsync${RESET} ${DIM}[provider]${RESET}" "${DIM}Remove mindset from current project${RESET}"
-  dot_leader "  ${BOLD}status${RESET}" "${DIM}Display sync status for all providers${RESET}"
-  dot_leader "  ${BOLD}list${RESET}" "${DIM}List all subagents available in your mindset vault${RESET}"
-  dot_leader "  ${BOLD}install${RESET}" "${DIM}Register shell aliases (Zsh, Bash, Fish)${RESET}"
-  dot_leader "  ${BOLD}help${RESET}" "${DIM}Display this help screen${RESET}"
-
-  echo -e "\n  ${BOLD}PROVIDERS:${RESET}"
-  echo -e "    ${BOLD}antigravity${RESET}  ${DIM}Google Antigravity IDE & CLI (.agents/agents/)${RESET}"
-  echo -e "    ${BOLD}cursor${RESET}       ${DIM}Cursor IDE (.cursor/rules/)${RESET}"
-  echo -e "    ${BOLD}claude${RESET}       ${DIM}Claude Code (.claude/)${RESET}\n"
+  echo -e "\n${sym_bolt} ${C_BOLD}Mindset CLI${C_RESET}"
+  echo -e "  ${C_DIM}Sync your personal developer mindset into any project's AI assistants${C_RESET}\n"
+  echo -e "  ${C_BOLD}Usage:${C_RESET}"
+  echo -e "    mindset [provider]         ${C_DIM}Sync mindset to current project (default: antigravity)${C_RESET}"
+  echo -e "    mindset sync [provider]    ${C_DIM}Explicit sync${C_RESET}"
+  echo -e "    mindset unsync [provider]  ${C_DIM}Remove mindset from current project${C_RESET}"
+  echo -e "    mindset status             ${C_DIM}View sync status in current project${C_RESET}"
+  echo -e "    mindset list               ${C_DIM}List all agents in your mindset vault${C_RESET}"
+  echo -e "    mindset install            ${C_DIM}Register shell aliases (Zsh, Fish)${C_RESET}"
+  echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} antigravity, cursor, claude\n"
 }
 
 # --- CLI Router ---
@@ -404,7 +314,7 @@ case "${1:-}" in
     cmd_sync "antigravity"
     ;;
   *)
-    badge_fail "Unknown command or provider '$1'"
+    echo -e "\n${sym_bolt} ${C_RED}Unknown command or provider '$1'${C_RESET}"
     show_help
     exit 1
     ;;
