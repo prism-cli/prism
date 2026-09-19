@@ -108,8 +108,7 @@ cmd_sync() {
   target_rel="$(get_provider_target "$provider")"
 
   if [[ -z "$source_dir" ]]; then
-    echo -e "${sym_bolt} ${C_RED}Unknown provider '${provider}'${C_RESET}"
-    echo -e "  ${C_DIM}Supported: antigravity, cursor, claude${C_RESET}\n"
+    echo -e "${sym_bolt} ${C_RED}Unknown provider '${provider}'${C_RESET}\n"
     exit 1
   fi
 
@@ -156,7 +155,7 @@ cmd_sync() {
         fi
       fi
     done
-    echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}merged${C_RESET} ${C_DIM}(${synced} synced, ${preserved} local preserved)${C_RESET}\n"
+    echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}merged${C_RESET} ${C_DIM}(${synced} synced, ${preserved} local)${C_RESET}\n"
   else
     ln -s "$source_dir" "$target_dir"
     echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}${agent_str}${C_RESET}\n"
@@ -216,7 +215,7 @@ cmd_unsync() {
   elif [[ -d "$target_dir" ]]; then
     find "$target_dir" -type l -exec rm {} +
     remove_git_exclusion "$project_root" "$target_rel"
-    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}unsynced (cleaned merged links)${C_RESET}\n"
+    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}unsynced (cleaned merged)${C_RESET}\n"
   else
     echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}not synced${C_RESET}\n"
   fi
@@ -227,7 +226,7 @@ cmd_list() {
   local display_vault
   display_vault="$(clean_path "$MINDSET_HOME/antigravity/agents")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}My mindset agents in${C_RESET} ${display_vault}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Agents in${C_RESET} ${display_vault}"
 
   for f in "$MINDSET_HOME/antigravity/agents"/*.md; do
     if [[ -f "$f" ]]; then
@@ -246,7 +245,7 @@ cmd_install() {
   local bin_path="$MINDSET_HOME/bin/mindset"
   chmod +x "$bin_path"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Installing my mindset CLI shell integrations${C_RESET}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations installed${C_RESET}"
 
   local zsh_bash_alias="alias mindset=\"$bin_path\""
   local fish_alias="alias mindset '$bin_path'"
@@ -257,7 +256,7 @@ cmd_install() {
   if ! grep -qs "alias mindset=" "$zshrc"; then
     echo -e "\n# Mindset CLI\n$zsh_bash_alias" >> "$zshrc"
   fi
-  echo -e "  ${sym_node} zsh  ${sym_active} ${C_GREEN}~/.zshrc${C_RESET} ${C_DIM}(alias registered)${C_RESET}"
+  echo -e "  ${sym_node} zsh  ${sym_active} ${C_DIM}~/.zshrc${C_RESET}"
 
   # Fish
   local fish_conf="$HOME/.config/fish/config.fish"
@@ -267,24 +266,19 @@ cmd_install() {
     if ! grep -qs "alias mindset" "$fish_conf"; then
       echo -e "\n# Mindset CLI\n$fish_alias" >> "$fish_conf"
     fi
-    echo -e "  ${sym_node} fish ${sym_active} ${C_GREEN}~/.config/fish/config.fish${C_RESET} ${C_DIM}(alias registered)${C_RESET}"
+    echo -e "  ${sym_node} fish ${sym_active} ${C_DIM}~/.config/fish/config.fish${C_RESET}"
   fi
-
-  echo -e "\n  ${C_DIM}Reload shell to start:${C_RESET} ${C_CYAN}source ~/.zshrc${C_RESET} ${C_DIM}or${RESET} ${C_CYAN}source ~/.config/fish/config.fish${RESET}\n"
+  echo ""
 }
 
 # --- Help ---
 show_help() {
   echo -e "\n${sym_bolt} ${C_BOLD}Mindset CLI${C_RESET}"
-  echo -e "  ${C_DIM}Sync your personal developer mindset into any project's AI assistants${C_RESET}\n"
-  echo -e "  ${C_BOLD}Usage:${C_RESET}"
-  echo -e "    mindset [provider]         ${C_DIM}Sync mindset to current project (default: antigravity)${C_RESET}"
-  echo -e "    mindset sync [provider]    ${C_DIM}Explicit sync${C_RESET}"
-  echo -e "    mindset unsync [provider]  ${C_DIM}Remove mindset from current project${C_RESET}"
-  echo -e "    mindset status             ${C_DIM}View sync status in current project${C_RESET}"
-  echo -e "    mindset list               ${C_DIM}List all agents in your mindset vault${C_RESET}"
-  echo -e "    mindset install            ${C_DIM}Register shell aliases (Zsh, Fish)${C_RESET}"
-  echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} antigravity, cursor, claude\n"
+  echo -e "  mindset [provider]         ${C_DIM}Sync to project (default: antigravity)${C_RESET}"
+  echo -e "  mindset unsync [provider]  ${C_DIM}Remove from project${C_RESET}"
+  echo -e "  mindset status             ${C_DIM}View status in project${C_RESET}"
+  echo -e "  mindset list               ${C_DIM}List agents in vault${C_RESET}"
+  echo -e "  mindset install            ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}\n"
 }
 
 # --- CLI Router ---
@@ -314,7 +308,7 @@ case "${1:-}" in
     cmd_sync "antigravity"
     ;;
   *)
-    echo -e "\n${sym_bolt} ${C_RED}Unknown command or provider '$1'${C_RESET}"
+    echo -e "\n${sym_bolt} ${C_RED}Unknown command '$1'${C_RESET}"
     show_help
     exit 1
     ;;
