@@ -18,7 +18,7 @@ Sync your personal AI developer agents and skills across Cursor, Claude, Codex, 
 2. Running `prism` links them into each tool's native folder (`.cursor/`, `.claude/`, `.agents/`, etc.).
 3. Symlinks are automatically added to `.git/info/exclude`—never polluting `git status` or PRs.
 
-## Quick Start
+## Quickstart
 
 ```terminal
 $ git clone https://github.com/<your-username>/prism.git ~/prism
