@@ -1,17 +1,9 @@
-<div align="center">
-
 # Prism
 
-**Refract your universal developer agents and skills across all AI assistants.**
-
-A lightweight template and CLI system to maintain your personal AI personas, rules, and runbooks in one central vault — seamlessly linked into any repository for **Cursor**, **Claude Code**, **Codex**, **Grok**, and **Gemini / Antigravity**.
-
-[Quick Start](#quick-start) • [How It Works](#how-it-works) • [Commands](#commands) • [Fork & Customize](#fork--customize)
-
-</div>
+Refract your universal developer agents and skills across Cursor, Claude, Codex, Grok, and Gemini.
 
 > [!NOTE]
-> This repository is a starter template. Fork it to your own GitHub account, tailor your agents and skills, and keep your personal AI development environment version-controlled across machines.
+> This is a starter template. Fork it to your own GitHub account to maintain and version-control your personal developer setup across machines.
 
 ```
 Applying prism to ~/Sites/project
@@ -25,44 +17,29 @@ Applying prism to ~/Sites/project
 
 ## Quick Start
 
-### 1. Fork & Clone
-Fork this repository to your GitHub, then clone it to your local environment:
 ```bash
+# 1. Clone your fork
 git clone https://github.com/<your-username>/prism.git ~/prism
-cd ~/prism
-```
 
-### 2. Install Shell Integration
-Register the `prism` command globally (supports Zsh and Fish):
-```bash
-./bin/prism install
-source ~/.zshrc   # or source ~/.config/fish/config.fish
-```
+# 2. Install shell alias
+~/prism/bin/prism install
+source ~/.zshrc # or source ~/.config/fish/config.fish
 
-### 3. Activate in Any Project
-Open any Git repository on your machine and run:
-```bash
+# 3. Apply to any project
+cd ~/Sites/my-project
 prism
 ```
-All universal agents and skills are linked into the project's native provider paths, automatically excluded from Git, and ready to use.
 
-## How It Works
+## Structure & Mappings
 
-Maintain only your universal Markdown definitions in `~/prism`. The CLI maps them into each tool's native discovery structure:
+Define agents and skills once in `~/prism`. Prism links them to native paths:
 
 ```
 ~/prism/
-├── bin/prism                # Single zero-dependency executive script
-├── agents/                  # Universal personas (.md)
-│   ├── agent-1.md           # e.g., Code Reviewer & Security Auditor
-│   ├── agent-2.md           # e.g., Test Engineer & QA Specialist
-│   └── agent-3.md           # e.g., Architecture Specialist
-└── skills/                  # Universal runbooks
-    ├── code-review/SKILL.md
-    └── git-workflow/SKILL.md
+├── bin/prism        # CLI runner
+├── agents/*.md      # Universal agent personas
+└── skills/*/SKILL.md # Reusable workflows
 ```
-
-### Native Provider Mappings
 
 | Provider | Shortcut | Agents & Rules | Skills | Git Exclude |
 | :--- | :---: | :--- | :--- | :--- |
@@ -76,23 +53,19 @@ Maintain only your universal Markdown definitions in `~/prism`. The CLI maps the
 
 | Command | Shortcut | Description |
 | :--- | :---: | :--- |
-| `prism` | `prism a` | Apply all providers to the current project |
-| `prism <provider>` | `prism cr`, `prism c`, etc. | Apply only a specific provider (`cr`, `c`, `cx`, `gk`, `g`) |
-| `prism status` | `prism st` | View active/inactive status across providers |
-| `prism list` | `prism ls` | List all available agents and skills in vault |
-| `prism clean` | `prism rm` | Safely remove all prism symlinks from project |
-| `prism clean <provider>` | `prism rm c` | Clean links for a specific provider only |
-| `prism install` | `prism i` | Register shell aliases (`~/.zshrc`, Fish config) |
-| `prism uninstall` | `prism ui` | Remove shell aliases |
-
-## Fork & Customize
-
-Make Prism your own:
-
-1. **Add Custom Personas**: Drop new markdown files into `agents/` defining system prompts, constraints, and instructions.
-2. **Add Custom Skills**: Create folders under `skills/<name>/SKILL.md` for task-specific playbooks (e.g. database migrations, release checklists).
-3. **Commit & Push**: Push changes to your own fork to keep your multi-machine developer setup in sync.
+| `prism` | `prism a` | Apply all providers to current project |
+| `prism <provider>` | `prism cr`, `prism c`, etc. | Apply a single provider |
+| `prism status` | `prism st` | View status across providers |
+| `prism list` | `prism ls` | List all available agents and skills |
+| `prism clean` | `prism rm` | Remove all symlinks from project |
+| `prism clean <provider>` | `prism rm c` | Remove links for a single provider |
+| `prism install` / `uninstall` | `i` / `ui` | Manage shell aliases |
 
 > [!TIP]
-> Prism automatically and silently appends active symlinks to `.git/info/exclude`. Your developer configuration is always live in your editor, but **never appears in `git status`, commits, or PR diffs**.
+> Prism automatically registers symlinks in `.git/info/exclude`. Your setup is active without polluting `git status` or commit diffs.
+
+## Contributing
+
+Contributions are welcome. Feel free to open issues or PRs to support new providers, improve shell integrations, or refine default agent and skill templates.
+
 
