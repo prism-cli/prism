@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Dynamically resolve the Prism root directory (parent of bin/)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PRISM_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
-PRISM_VERSION="0.1.2"
+# Dynamically resolve the true Prism root directory (even if invoked via symlink in ~/.local/bin)
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+PRISM_HOME="$(cd -P "$SCRIPT_DIR/.." && pwd)"
+PRISM_VERSION="0.1.3"
 
 # --- ANSI Color Palette ---
 C_YELLOW="\033[33;1m"
@@ -196,6 +202,9 @@ cmd_apply() {
   project_root="$(get_project_root)"
   local display_root
   display_root="$(clean_path "$project_root")"
+
+  # Ensure vault directories exist
+  mkdir -p "$PRISM_HOME/agents" "$PRISM_HOME/skills"
 
   echo -e "\n${C_BOLD}Applying prism to${C_RESET} ${display_root}\n"
 
