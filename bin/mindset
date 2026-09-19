@@ -170,7 +170,9 @@ sync_provider() {
   local s_count
   s_count=$(count_items "$skills_src" "d")
 
-  echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+  local p_pad
+  printf -v p_pad "%-8s" "$provider"
+  echo -e "  ${sym_node} ${p_pad} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
 }
 
 cmd_sync() {
@@ -211,10 +213,12 @@ cmd_status() {
     local a_dest="$project_root/$p_root/agents"
     local s_dest="$project_root/$p_root/skills"
 
+    local p_pad
+    printf -v p_pad "%-8s" "$p"
     if [[ -e "$a_dest" || -e "$s_dest" ]]; then
-      echo -e "  ${sym_node} ${p} ${sym_active} ${C_GREEN}in sync${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+      echo -e "  ${sym_node} ${p_pad} ${sym_active} ${C_GREEN}in sync${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
     else
-      echo -e "  ${sym_node} ${p} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
+      echo -e "  ${sym_node} ${p_pad} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
     fi
   done
   echo ""
@@ -227,7 +231,9 @@ unsync_provider() {
   p_root="$(get_provider_root "$provider")"
 
   if [[ -z "$p_root" ]]; then
-    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_RED}unknown provider${C_RESET}"
+    local p_pad
+    printf -v p_pad "%-8s" "$provider"
+    echo -e "  ${sym_node} ${p_pad} ${sym_inactive} ${C_RED}unknown provider${C_RESET}"
     return 1
   fi
 
@@ -250,10 +256,12 @@ unsync_provider() {
   rmdir "$project_root/$p_root" 2>/dev/null || true
   remove_git_exclusion "$project_root" "$p_root"
 
+  local p_pad
+  printf -v p_pad "%-8s" "$provider"
   if [[ $removed -eq 1 ]]; then
-    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}unsynced${C_RESET}"
+    echo -e "  ${sym_node} ${p_pad} ${sym_inactive} ${C_DIM}unsynced${C_RESET}"
   else
-    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
+    echo -e "  ${sym_node} ${p_pad} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
   fi
 }
 
