@@ -4,10 +4,10 @@
 
 ---
 
-## ⚡ Clean Terminal UI
+## Clean Terminal UI
 
 ```terminal
-⚡ Applying prism to ~/Sites/jacasa-cp
+Applying prism to ~/Sites/jacasa-cp
 
   gemini ................................... active (3 agents, 2 skills)
   claude ................................... active (3 agents, 2 skills)
@@ -18,7 +18,7 @@
 
 ---
 
-## 📦 Directory Structure
+## Directory Structure
 
 Maintain only **`agents/`** and **`skills/`** in your central vault. Prism automatically links them into each AI assistant's native directories:
 
@@ -40,7 +40,7 @@ Maintain only **`agents/`** and **`skills/`** in your central vault. Prism autom
 
 ---
 
-## 🌐 Provider Destination Paths
+## Provider Destination Paths
 
 | Provider | Shortcut | Agents Location | Skills Location | Git Ignore Scope |
 | :--- | :--- | :--- | :--- | :--- |
@@ -52,7 +52,7 @@ Maintain only **`agents/`** and **`skills/`** in your central vault. Prism autom
 
 ---
 
-## 🚀 Installation
+## Installation
 
 Run once to register shell integrations for **Zsh** and **Fish**:
 
@@ -68,7 +68,7 @@ source ~/.config/fish/config.fish   # for Fish
 
 ---
 
-## 💻 Commands
+## Commands
 
 Navigate to any project repository:
 
@@ -101,5 +101,6 @@ prism uninstall     # (shortcut: prism ui)
 
 ---
 
-## 🛡️ Git Protection
+## Git Protection
 `prism` automatically and silently registers symlinks in `.git/info/exclude`. Your personal developer mindset is fully active, but **never committed or visible in `git status`**.
+

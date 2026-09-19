@@ -14,8 +14,6 @@ C_DIM="\033[90m"
 C_BOLD="\033[1m"
 C_RESET="\033[0m"
 
-sym_bolt="${C_YELLOW}⚡${C_RESET}"
-
 SUPPORTED_PROVIDERS=("gemini" "claude" "codex" "grok" "cursor")
 
 # Dot leader helper (auto-fills dots between left and right column)
@@ -198,7 +196,7 @@ cmd_apply() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Applying prism to${C_RESET} ${display_root}\n"
+  echo -e "\n${C_BOLD}Applying prism to${C_RESET} ${display_root}\n"
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
@@ -217,7 +215,7 @@ cmd_status() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Prism status in${C_RESET} ${display_root}\n"
+  echo -e "\n${C_BOLD}Prism status in${C_RESET} ${display_root}\n"
 
   local a_count s_count
   a_count=$(count_items "$PRISM_HOME/agents" "f")
@@ -285,7 +283,7 @@ cmd_clean() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Cleaning prism from${C_RESET} ${display_root}\n"
+  echo -e "\n${C_BOLD}Cleaning prism from${C_RESET} ${display_root}\n"
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
@@ -302,7 +300,7 @@ cmd_list() {
   local agents_dir="$PRISM_HOME/agents"
   local skills_dir="$PRISM_HOME/skills"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Agents in${C_RESET} ${C_DIM}$(clean_path "$agents_dir")${C_RESET}\n"
+  echo -e "\n${C_BOLD}Agents in${C_RESET} ${C_DIM}$(clean_path "$agents_dir")${C_RESET}\n"
   if [[ -d "$agents_dir" ]]; then
     for f in "$agents_dir"/*.md; do
       if [[ -f "$f" ]]; then
@@ -314,7 +312,7 @@ cmd_list() {
     done
   fi
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Skills in${C_RESET} ${C_DIM}$(clean_path "$skills_dir")${C_RESET}\n"
+  echo -e "\n${C_BOLD}Skills in${C_RESET} ${C_DIM}$(clean_path "$skills_dir")${C_RESET}\n"
   if [[ -d "$skills_dir" ]]; then
     for d in "$skills_dir"/*; do
       if [[ -d "$d" ]]; then
@@ -332,7 +330,7 @@ cmd_install() {
   local bin_path="$PRISM_HOME/bin/prism"
   chmod +x "$bin_path"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations installed${C_RESET}\n"
+  echo -e "\n${C_BOLD}Shell integrations installed${C_RESET}\n"
 
   local zsh_bash_alias="alias prism=\"$bin_path\""
   local fish_alias="alias prism '$bin_path'"
@@ -360,7 +358,7 @@ cmd_install() {
 
 # --- Command: Uninstall (Remove Aliases) ---
 cmd_uninstall() {
-  echo -e "\n${sym_bolt} ${C_BOLD}Shell integrations removed${C_RESET}\n"
+  echo -e "\n${C_BOLD}Shell integrations removed${C_RESET}\n"
 
   # Zsh
   local zshrc="$HOME/.zshrc"
@@ -390,7 +388,7 @@ cmd_uninstall() {
 
 # --- Help ---
 show_help() {
-  echo -e "\n${sym_bolt} ${C_BOLD}Prism CLI${C_RESET}"
+  echo -e "\n${C_BOLD}Prism CLI${C_RESET}"
   echo -e "  prism [provider]              ${C_DIM}Apply to project (default: all)   [apply]${C_RESET}"
   echo -e "  prism clean [provider]        ${C_DIM}Clean from project (default: all) [rm]${C_RESET}"
   echo -e "  prism status                  ${C_DIM}View status across providers      [st]${C_RESET}"
@@ -432,7 +430,7 @@ case "${1:-}" in
     cmd_apply "all"
     ;;
   *)
-    echo -e "\n${sym_bolt} ${C_RED}Unknown command or provider '$1'${C_RESET}"
+    echo -e "\n${C_RED}Unknown command or provider '$1'${C_RESET}"
     show_help
     exit 1
     ;;
