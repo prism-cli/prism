@@ -7,13 +7,13 @@
 ## ⚡ Clean Terminal UI
 
 ```terminal
-⚡ Syncing prism to ~/Sites/jacasa-cp
+⚡ Applying prism to ~/Sites/jacasa-cp
 
-  gemini ................................... synced (3 agents, 2 skills)
-  claude ................................... synced (3 agents, 2 skills)
-  codex .................................... synced (3 agents, 2 skills)
-  grok ..................................... synced (3 agents, 2 skills)
-  cursor ................................... synced (3 agents, 2 skills)
+  gemini ................................... active (3 agents, 2 skills)
+  claude ................................... active (3 agents, 2 skills)
+  codex .................................... active (3 agents, 2 skills)
+  grok ..................................... active (3 agents, 2 skills)
+  cursor ................................... active (3 agents, 2 skills)
 ```
 
 ---
@@ -68,20 +68,36 @@ source ~/.config/fish/config.fish   # for Fish
 
 ---
 
-## ⌨️ Fast Shortcuts Reference
+## 💻 Commands
 
-| Full Command | Shortcut | Description |
-| :--- | :--- | :--- |
-| `prism` or `prism sync` | `prism s` | Sync all providers |
-| `prism status` | `prism st` | Check sync status |
-| `prism list` | `prism ls` (or `prism l`) | List vault agents & skills |
-| `prism unsync` | `prism u` (or `prism rm`) | Unsync all providers |
-| `prism cursor` | `prism cr` | Sync only Cursor |
-| `prism claude` | `prism c` | Sync only Claude |
-| `prism codex` | `prism cx` | Sync only Codex |
-| `prism grok` | `prism gk` | Sync only Grok |
-| `prism gemini` | `prism g` | Sync only Gemini |
-| `prism unsync claude` | `prism u c` | Unsync only Claude |
+Navigate to any project repository:
+
+```bash
+# Apply ALL providers by default:
+prism
+
+# Apply a specific provider only:
+prism cursor        # (shortcut: prism cr)
+prism claude        # (shortcut: prism c)
+prism codex         # (shortcut: prism cx)
+prism grok          # (shortcut: prism gk)
+prism gemini        # (shortcut: prism g)
+
+# Check status across all providers:
+prism status        # (shortcut: prism st)
+
+# List all available agents and skills in your vault:
+prism list          # (shortcut: prism ls)
+
+# Clean ALL providers from the project:
+prism clean         # (shortcut: prism rm)
+
+# Clean a specific provider only:
+prism clean cursor  # (shortcut: prism clean cr)
+
+# Remove shell aliases:
+prism uninstall     # (shortcut: prism ui)
+```
 
 ---
 

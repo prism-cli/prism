@@ -14,7 +14,6 @@ C_DIM="\033[90m"
 C_BOLD="\033[1m"
 C_RESET="\033[0m"
 
-# Formatting helpers
 sym_bolt="${C_YELLOW}⚡${C_RESET}"
 
 SUPPORTED_PROVIDERS=("gemini" "claude" "codex" "grok" "cursor")
@@ -148,14 +147,15 @@ safe_link_dir() {
   fi
 }
 
-# --- Command: Sync Single Provider ---
-sync_provider() {
-  local provider="$1"
+# --- Command: Apply Single Provider ---
+apply_provider() {
+  local provider
+  provider="$(resolve_provider "$1")"
   local p_root
   p_root="$(get_provider_root "$provider")"
 
   if [[ -z "$p_root" ]]; then
-    echo -e "  ${provider} ... ${C_RED}unknown provider${C_RESET}"
+    dot_leader "$provider" "unknown provider" "${C_RED}unknown provider${C_RESET}"
     return 1
   fi
 
@@ -185,12 +185,12 @@ sync_provider() {
   a_count=$(count_items "$agents_src" "f")
   s_count=$(count_items "$skills_src" "d")
 
-  local raw_right="synced (${a_count} agents, ${s_count} skills)"
-  local colored_right="${C_GREEN}synced${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+  local raw_right="active (${a_count} agents, ${s_count} skills)"
+  local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
   dot_leader "$provider" "$raw_right" "$colored_right"
 }
 
-cmd_sync() {
+cmd_apply() {
   local target_provider
   target_provider="$(resolve_provider "${1:-all}")"
   local project_root
@@ -198,14 +198,14 @@ cmd_sync() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Syncing prism to${C_RESET} ${display_root}\n"
+  echo -e "\n${sym_bolt} ${C_BOLD}Applying prism to${C_RESET} ${display_root}\n"
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
-      sync_provider "$p"
+      apply_provider "$p"
     done
   else
-    sync_provider "$target_provider"
+    apply_provider "$target_provider"
   fi
   echo ""
 }
@@ -217,7 +217,7 @@ cmd_status() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}My prism status in${C_RESET} ${display_root}\n"
+  echo -e "\n${sym_bolt} ${C_BOLD}Prism status in${C_RESET} ${display_root}\n"
 
   local a_count s_count
   a_count=$(count_items "$PRISM_HOME/agents" "f")
@@ -230,18 +230,18 @@ cmd_status() {
     local s_dest="$project_root/$p_root/skills"
 
     if [[ -e "$a_dest" || -e "$s_dest" ]]; then
-      local raw_right="in sync (${a_count} agents, ${s_count} skills)"
-      local colored_right="${C_GREEN}in sync${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+      local raw_right="active (${a_count} agents, ${s_count} skills)"
+      local colored_right="${C_GREEN}active${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
       dot_leader "$p" "$raw_right" "$colored_right"
     else
-      dot_leader "$p" "not synced" "${C_DIM}not synced${C_RESET}"
+      dot_leader "$p" "inactive" "${C_DIM}inactive${C_RESET}"
     fi
   done
   echo ""
 }
 
-# --- Command: Unsync Provider ---
-unsync_provider() {
+# --- Command: Clean Single Provider ---
+clean_provider() {
   local provider
   provider="$(resolve_provider "$1")"
   local p_root
@@ -271,13 +271,13 @@ unsync_provider() {
   remove_git_exclusion "$project_root" "$p_root"
 
   if [[ $removed -eq 1 ]]; then
-    dot_leader "$provider" "unsynced" "${C_DIM}unsynced${C_RESET}"
+    dot_leader "$provider" "cleaned" "${C_DIM}cleaned${C_RESET}"
   else
-    dot_leader "$provider" "not synced" "${C_DIM}not synced${C_RESET}"
+    dot_leader "$provider" "clean" "${C_DIM}clean${C_RESET}"
   fi
 }
 
-cmd_unsync() {
+cmd_clean() {
   local target_provider
   target_provider="$(resolve_provider "${1:-all}")"
   local project_root
@@ -285,14 +285,14 @@ cmd_unsync() {
   local display_root
   display_root="$(clean_path "$project_root")"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Unsyncing prism from${C_RESET} ${display_root}\n"
+  echo -e "\n${sym_bolt} ${C_BOLD}Cleaning prism from${C_RESET} ${display_root}\n"
 
   if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
     for p in "${SUPPORTED_PROVIDERS[@]}"; do
-      unsync_provider "$p"
+      clean_provider "$p"
     done
   else
-    unsync_provider "$target_provider"
+    clean_provider "$target_provider"
   fi
   echo ""
 }
@@ -391,15 +391,14 @@ cmd_uninstall() {
 # --- Help ---
 show_help() {
   echo -e "\n${sym_bolt} ${C_BOLD}Prism CLI${C_RESET}"
-  echo -e "  prism [provider]              ${C_DIM}Sync providers (default: all)   [s]${C_RESET}"
-  echo -e "  prism unsync [provider]       ${C_DIM}Remove providers (default: all) [u, rm]${C_RESET}"
-  echo -e "  prism status                  ${C_DIM}View sync status across all     [st]${C_RESET}"
-  echo -e "  prism list                    ${C_DIM}List all agents & skills        [ls, l]${C_RESET}"
-  echo -e "  prism install                 ${C_DIM}Install shell aliases           [i]${C_RESET}"
-  echo -e "  prism uninstall               ${C_DIM}Remove shell aliases            [ui]${C_RESET}"
-  echo -e "\n  ${C_BOLD}Command Shortcuts:${C_RESET}"
-  echo -e "    ${C_CYAN}s${C_RESET} = sync, ${C_CYAN}u${C_RESET} = unsync, ${C_CYAN}st${C_RESET} = status, ${C_CYAN}ls${C_RESET} = list"
-  echo -e "\n  ${C_BOLD}Provider Shortcuts:${C_RESET}"
+  echo -e "  prism [provider]              ${C_DIM}Apply to project (default: all)   [apply]${C_RESET}"
+  echo -e "  prism clean [provider]        ${C_DIM}Clean from project (default: all) [rm]${C_RESET}"
+  echo -e "  prism status                  ${C_DIM}View status across providers      [st]${C_RESET}"
+  echo -e "  prism list                    ${C_DIM}List all agents & skills          [ls, l]${C_RESET}"
+  echo -e "  prism install                 ${C_DIM}Install shell aliases             [i]${C_RESET}"
+  echo -e "  prism uninstall               ${C_DIM}Remove shell aliases              [ui]${C_RESET}"
+  echo -e "\n  ${C_BOLD}Shortcuts:${C_RESET}"
+  echo -e "    ${C_CYAN}st${C_RESET} = status, ${C_CYAN}ls${C_RESET} = list, ${C_CYAN}clean${C_RESET} / ${C_CYAN}rm${C_RESET} = remove"
   echo -e "    ${C_CYAN}g${C_RESET} = gemini, ${C_CYAN}c${C_RESET} = claude, ${C_CYAN}cx${C_RESET} = codex, ${C_CYAN}gk${C_RESET} = grok, ${C_CYAN}cr${C_RESET} = cursor, ${C_CYAN}a${C_RESET} = all\n"
 }
 
@@ -411,8 +410,8 @@ case "${1:-}" in
   uninstall|ui)
     cmd_uninstall
     ;;
-  unsync|unlink|u|rm)
-    cmd_unsync "${2:-all}"
+  clean|rm|u|unsync|unlink)
+    cmd_clean "${2:-all}"
     ;;
   status|st)
     cmd_status
@@ -423,14 +422,14 @@ case "${1:-}" in
   help|--help|-h|h)
     show_help
     ;;
-  sync|s)
-    cmd_sync "${2:-all}"
+  apply|link|sync|s)
+    cmd_apply "${2:-all}"
     ;;
   gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a)
-    cmd_sync "$1"
+    cmd_apply "$1"
     ;;
   "")
-    cmd_sync "all"
+    cmd_apply "all"
     ;;
   *)
     echo -e "\n${sym_bolt} ${C_RED}Unknown command or provider '$1'${C_RESET}"
