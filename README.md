@@ -41,9 +41,9 @@ Applying prism to ~/Sites/my-project
 | Command | Shortcut | Description |
 | :--- | :---: | :--- |
 | `prism` | `prism a` | Link all tools (stealth mode, ignored by git) |
-| `prism --track` | `prism -t` | Link all tools and track in Git to share with team |
-| `prism agent <name>` | — | Link a specific agent only (stealth by default, `-t` to track) |
-| `prism skill <name>` | — | Link a specific skill only (stealth by default, `-t` to track) |
+| `prism track` | `prism t` | Link all tools and track in Git to share with team |
+| `prism agent <name>` | — | Link a specific agent only (stealth by default, `t` to track) |
+| `prism skill <name>` | — | Link a specific skill only (stealth by default, `t` to track) |
 | `prism <tool>` | `prism cr`, `prism c`, etc. | Link one tool (`cr`, `c`, `cx`, `gk`, `g`) |
 | `prism clean` | `prism rm` | Unlink all tools from project |
 | `prism clean agent <name>` | `prism rm agent` | Remove a specific agent from project |
@@ -68,8 +68,8 @@ $ prism cursor
 $ prism agent code-reviewer cursor
 
 # Share configurations with your team via git
-$ prism --track
-$ prism agent code-reviewer --track
+$ prism track
+$ prism track agent code-reviewer
 
 # Remove an agent, skill, or all links
 $ prism clean agent code-reviewer

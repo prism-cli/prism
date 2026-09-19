@@ -433,7 +433,7 @@ cmd_apply() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --track|-t|--shared|--public|track|shared)
+      --track|-t|--shared|--public|track|shared|t)
         track="true"
         shift
         ;;
@@ -899,7 +899,7 @@ cmd_uninstall() {
 show_help() {
   echo -e "\n${C_BOLD}Prism CLI${C_RESET} ${C_DIM}v${PRISM_VERSION}${C_RESET}"
   echo -e "  prism [provider]              ${C_DIM}Apply all agents & skills (stealth, default: all)${C_RESET}"
-  echo -e "  prism --track [provider]      ${C_DIM}Apply all and track in Git to share with team [-t]${C_RESET}"
+  echo -e "  prism track [provider]        ${C_DIM}Apply all and track in Git to share with team [t]${C_RESET}"
   echo -e "  prism agent <name> [provider] ${C_DIM}Apply specific agent only${C_RESET}"
   echo -e "  prism skill <name> [provider] ${C_DIM}Apply specific skill only${C_RESET}"
   echo -e "  prism clean [provider]        ${C_DIM}Clean from project (default: all) [rm]${C_RESET}"
@@ -911,7 +911,7 @@ show_help() {
   echo -e "  prism uninstall               ${C_DIM}Remove from ~/.local/bin/prism    [ui]${C_RESET}"
   echo -e "  prism version                 ${C_DIM}Print version                     [-v, --version]${C_RESET}"
   echo -e "\n  ${C_BOLD}Shortcuts:${C_RESET}"
-  echo -e "    ${C_CYAN}st${C_RESET} = status, ${C_CYAN}ls${C_RESET} = list, ${C_CYAN}clean${C_RESET} / ${C_CYAN}rm${C_RESET} = remove"
+  echo -e "    ${C_CYAN}st${C_RESET} = status, ${C_CYAN}ls${C_RESET} = list, ${C_CYAN}clean${C_RESET} / ${C_CYAN}rm${C_RESET} = remove, ${C_CYAN}t${C_RESET} = track"
   echo -e "    ${C_CYAN}g${C_RESET} = gemini, ${C_CYAN}c${C_RESET} = claude, ${C_CYAN}cx${C_RESET} = codex, ${C_CYAN}gk${C_RESET} = grok, ${C_CYAN}cr${C_RESET} = cursor, ${C_CYAN}a${C_RESET} = all\n"
 }
 
@@ -943,7 +943,7 @@ case "${1:-}" in
     shift
     cmd_apply "$@"
     ;;
-  agent|skill|--agent*|--skill*|gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a|--track|-t|--shared|--public|track|shared)
+  track|t|agent|skill|--agent*|--skill*|gemini|antigravity|g|agy|claude|c|codex|cx|co|grok|gk|x|cursor|cr|cs|all|a|--track|-t|--shared|--public|shared)
     cmd_apply "$@"
     ;;
   "")
