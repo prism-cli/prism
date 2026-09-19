@@ -6,18 +6,13 @@ Fork this template to version-control your personal setup across machines.
 
 ## Quick Start
 
-```bash
-# 1. Clone your fork
-git clone https://github.com/<your-username>/prism.git ~/prism
+```terminal
+$ git clone https://github.com/<your-username>/prism.git ~/prism
+$ ~/prism/bin/prism install
 
-# 2. Install CLI (~/.local/bin)
-~/prism/bin/prism install
+$ cd ~/Sites/my-project
+$ prism
 
-# 3. In any project:
-prism
-```
-
-```
 Applying prism to ~/Sites/my-project
 
   gemini ................................... active (3 agents, 2 skills)
