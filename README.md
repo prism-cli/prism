@@ -1,45 +1,45 @@
 # Mindset
 
-> Single source of truth for your personal developer mindset, AI agent configurations, and standards across all AI providers.
+> Single source of truth for your personal developer mindset, AI agent configurations, and skills across all AI providers.
 
 ---
 
-## ⚡ Visual CLI Experience
+## ⚡ Unified Architecture
 
-```terminal
-⚡ Syncing my mindset to ~/projects/my-app
-  ◈ antigravity ──● synced (3 agents)
-
-⚡ My mindset status in ~/projects/my-app
-  ◈ antigravity ──● in sync (3 agents)
-  ◈ cursor      ──○ not synced
-  ◈ claude      ──○ not synced
-
-⚡ Unsyncing my mindset from ~/projects/my-app
-  ◈ antigravity ──○ unsynced
-```
-
----
-
-## 📦 Directory Structure
+Maintain only **`agents/`** and **`skills/`** in your central vault. The CLI script syncs them into the native, default locations of each AI assistant:
 
 ```
 ~/mindset/
 ├── bin/
 │   └── mindset              # Executive CLI tool
-├── antigravity/
-│   └── agents/              # Antigravity subagent markdown definitions
-│       ├── agent-1.md       # Code Reviewer & Security Auditor
-│       ├── agent-2.md       # Test Engineer & QA Specialist
-│       └── agent-3.md       # Architecture & Documentation Specialist
-├── cursor/
-│   └── rules/               # Cursor rules (.cursor/rules/)
-└── claude/                  # Claude Code configurations (.claude/)
+├── agents/                  # Universal agent definitions (.md)
+│   ├── agent-1.md           # Code Reviewer & Security Auditor
+│   ├── agent-2.md           # Test Engineer & QA Specialist
+│   └── agent-3.md           # Architecture & Documentation Specialist
+├── skills/                  # Universal skills runbooks
+│   ├── code-review/
+│   │   └── SKILL.md
+│   └── git-workflow/
+│       └── SKILL.md
+└── README.md
 ```
 
 ---
 
-## 🚀 Installation
+## 🌐 Provider Destination Paths
+
+When synced to any project workspace, Mindset links your agents & skills into the provider's default structure:
+
+| Provider | Agents Location | Skills Location | Git Ignore Scope |
+| :--- | :--- | :--- | :--- |
+| **Gemini / Antigravity** | `.agents/agents/` | `.agents/skills/` | `.agents/` |
+| **Claude** | `.claude/agents/` | `.claude/skills/` | `.claude/` |
+| **Codex** | `.codex/agents/` | `.codex/skills/` | `.codex/` |
+| **Grok** | `.grok/agents/` | `.grok/skills/` | `.grok/` |
+
+---
+
+## 🚀 Setup & Installation
 
 Run once to register shell integrations for **Zsh** and **Fish**:
 
@@ -60,19 +60,24 @@ source ~/.config/fish/config.fish   # for Fish
 Navigate to any project repository:
 
 ```bash
-# Sync Antigravity agents (default)
-mindset sync antigravity
-# or simply:
-mindset antigravity
+# Sync specific provider
+mindset gemini       # (or mindset antigravity)
+mindset claude
+mindset codex
+mindset grok
+
+# Sync all providers at once
+mindset all
 
 # Check sync status across all providers
 mindset status
 
-# List all available mindset agents in your vault
+# List all available agents and skills in your vault
 mindset list
 
-# Unsync from the current project
-mindset unsync antigravity
+# Unsync from the project
+mindset unsync gemini
+mindset unsync all
 
 # Remove shell aliases
 mindset uninstall

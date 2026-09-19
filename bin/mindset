@@ -20,6 +20,8 @@ sym_node="${C_CYAN}◈${C_RESET}"
 sym_active="${C_DIM}──${C_RESET}${C_GREEN}●${C_RESET}"
 sym_inactive="${C_DIM}──○${C_RESET}"
 
+SUPPORTED_PROVIDERS=("gemini" "claude" "codex" "grok")
+
 # Convert absolute path to ~/relative for clean display
 clean_path() {
   local path="$1"
@@ -30,22 +32,19 @@ clean_path() {
   fi
 }
 
-# --- Provider Registry ---
-get_provider_source() {
+# --- Provider Target Root Mapping ---
+# Each provider expects its agents and skills inside its specific project directory:
+# gemini (or antigravity) -> .agents/ (or .gemini/)
+# claude                 -> .claude/
+# codex                  -> .codex/
+# grok                   -> .grok/
+get_provider_root() {
   case "$1" in
-    antigravity) echo "$MINDSET_HOME/antigravity/agents" ;;
-    cursor)      echo "$MINDSET_HOME/cursor/rules" ;;
-    claude)      echo "$MINDSET_HOME/claude" ;;
-    *)           echo "" ;;
-  esac
-}
-
-get_provider_target() {
-  case "$1" in
-    antigravity) echo ".agents/agents" ;;
-    cursor)      echo ".cursor/rules" ;;
-    claude)      echo ".claude" ;;
-    *)           echo "" ;;
+    gemini|antigravity) echo ".agents" ;;
+    claude)             echo ".claude" ;;
+    codex)              echo ".codex" ;;
+    grok)               echo ".grok" ;;
+    *)                  echo "" ;;
   esac
 }
 
@@ -57,12 +56,15 @@ get_project_root() {
   fi
 }
 
-count_agents() {
+count_items() {
   local dir="$1"
+  local type="${2:-f}"
   if [[ -d "$dir" ]]; then
-    local count
-    count=$(find "$dir" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-    echo "$count"
+    if [[ "$type" == "d" ]]; then
+      find "$dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
+    else
+      find "$dir" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' '
+    fi
   else
     echo "0"
   fi
@@ -76,10 +78,11 @@ ensure_git_excluded() {
 
   if [[ -d "$project_root/.git" ]]; then
     mkdir -p "$(dirname "$exclude_file")"
-    if ! grep -qs "^${target_rel}$" "$exclude_file" 2>/dev/null; then
+    if ! grep -qs "^${target_rel}" "$exclude_file" 2>/dev/null; then
       echo "" >> "$exclude_file"
       echo "# [mindset] Local developer AI preferences (untracked)" >> "$exclude_file"
-      echo "$target_rel" >> "$exclude_file"
+      echo "${target_rel}/" >> "$exclude_file"
+      echo "${target_rel}" >> "$exclude_file"
     fi
   fi
 }
@@ -91,78 +94,97 @@ remove_git_exclusion() {
 
   if [[ -f "$exclude_file" ]]; then
     sed -i.bak "/# \[mindset\]/d" "$exclude_file" 2>/dev/null || true
-    sed -i.bak "\|^${target_rel}\$|d" "$exclude_file" 2>/dev/null || true
+    sed -i.bak "\|^${target_rel}/?\$|d" "$exclude_file" 2>/dev/null || true
     rm -f "${exclude_file}.bak"
   fi
 }
 
-# --- Command: Sync Provider ---
-cmd_sync() {
-  local provider="${1:-antigravity}"
-  local source_dir
-  local target_rel
+# Link a single category (agents or skills) safely
+safe_link_dir() {
+  local src="$1"
+  local dest="$2"
+
+  mkdir -p "$(dirname "$dest")"
+
+  if [[ -L "$dest" ]]; then
+    local current
+    current="$(readlink "$dest")"
+    if [[ "$current" != "$src" ]]; then
+      ln -sfn "$src" "$dest"
+    fi
+  elif [[ -d "$dest" ]]; then
+    # Merge mode without overwriting existing files
+    for item in "$src"/*; do
+      if [[ -e "$item" ]]; then
+        local iname
+        iname="$(basename "$item")"
+        if [[ ! -e "$dest/$iname" ]]; then
+          ln -s "$item" "$dest/$iname"
+        fi
+      fi
+    done
+  else
+    ln -s "$src" "$dest"
+  fi
+}
+
+# --- Command: Sync Single Provider ---
+sync_provider() {
+  local provider="$1"
+  local p_root
+  p_root="$(get_provider_root "$provider")"
+
+  if [[ -z "$p_root" ]]; then
+    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_RED}unknown provider${C_RESET}"
+    return 1
+  fi
+
   local project_root
-  local target_dir
-
-  source_dir="$(get_provider_source "$provider")"
-  target_rel="$(get_provider_target "$provider")"
-
-  if [[ -z "$source_dir" ]]; then
-    echo -e "${sym_bolt} ${C_RED}Unknown provider '${provider}'${C_RESET}\n"
-    exit 1
-  fi
-
-  if [[ ! -d "$source_dir" ]]; then
-    mkdir -p "$source_dir"
-  fi
-
   project_root="$(get_project_root)"
-  target_dir="$project_root/$target_rel"
+
+  local agents_src="$MINDSET_HOME/agents"
+  local skills_src="$MINDSET_HOME/skills"
+
+  local agents_dest="$project_root/$p_root/agents"
+  local skills_dest="$project_root/$p_root/skills"
+
+  # Link agents and skills
+  if [[ -d "$agents_src" ]]; then
+    safe_link_dir "$agents_src" "$agents_dest"
+  fi
+
+  if [[ -d "$skills_src" ]]; then
+    safe_link_dir "$skills_src" "$skills_dest"
+  fi
+
+  # Apply silent git exclusion
+  ensure_git_excluded "$project_root" "$p_root"
+
+  local a_count s_count
+  a_count=$(count_items "$agents_src" "f")
+  local s_count
+  s_count=$(count_items "$skills_src" "d")
+
+  echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
+}
+
+cmd_sync() {
+  local target_provider="${1:-gemini}"
+  local project_root
+  project_root="$(get_project_root)"
   local display_root
   display_root="$(clean_path "$project_root")"
 
   echo -e "\n${sym_bolt} ${C_BOLD}Syncing my mindset to${C_RESET} ${display_root}"
 
-  mkdir -p "$(dirname "$target_dir")"
-
-  local agent_count
-  agent_count=$(count_agents "$source_dir")
-  local agent_str="(${agent_count} agents)"
-  if [[ "$agent_count" -eq 1 ]]; then agent_str="(1 agent)"; fi
-
-  # Safe collision detection
-  if [[ -L "$target_dir" ]]; then
-    local current_target
-    current_target="$(readlink "$target_dir")"
-    if [[ "$current_target" == "$source_dir" ]]; then
-      echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}in sync${C_RESET} ${C_DIM}${agent_str}${C_RESET}\n"
-    else
-      ln -sfn "$source_dir" "$target_dir"
-      echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}${agent_str}${C_RESET}\n"
-    fi
-  elif [[ -d "$target_dir" ]]; then
-    # Merge mode without overwriting existing files
-    local synced=0 preserved=0
-    for file in "$source_dir"/*; do
-      if [[ -f "$file" ]]; then
-        local fname
-        fname="$(basename "$file")"
-        if [[ -e "$target_dir/$fname" ]]; then
-          ((preserved++))
-        else
-          ln -s "$file" "$target_dir/$fname"
-          ((synced++))
-        fi
-      fi
+  if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
+    for p in "${SUPPORTED_PROVIDERS[@]}"; do
+      sync_provider "$p"
     done
-    echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}merged${C_RESET} ${C_DIM}(${synced} synced, ${preserved} local)${C_RESET}\n"
   else
-    ln -s "$source_dir" "$target_dir"
-    echo -e "  ${sym_node} ${provider} ${sym_active} ${C_GREEN}synced${C_RESET} ${C_DIM}${agent_str}${C_RESET}\n"
+    sync_provider "$target_provider"
   fi
-
-  # Silently apply Git exclusion
-  ensure_git_excluded "$project_root" "$target_rel"
+  echo ""
 }
 
 # --- Command: Status ---
@@ -174,18 +196,18 @@ cmd_status() {
 
   echo -e "\n${sym_bolt} ${C_BOLD}My mindset status in${C_RESET} ${display_root}"
 
-  for p in antigravity cursor claude; do
-    local target_rel target_dir source_dir
-    target_rel="$(get_provider_target "$p")"
-    target_dir="$project_root/$target_rel"
-    source_dir="$(get_provider_source "$p")"
+  local a_count s_count
+  a_count=$(count_items "$MINDSET_HOME/agents" "f")
+  s_count=$(count_items "$MINDSET_HOME/skills" "d")
 
-    if [[ -L "$target_dir" ]]; then
-      local agent_count
-      agent_count=$(count_agents "$source_dir")
-      echo -e "  ${sym_node} ${p} ${sym_active} ${C_GREEN}in sync${C_RESET} ${C_DIM}(${agent_count} agents)${C_RESET}"
-    elif [[ -d "$target_dir" ]]; then
-      echo -e "  ${sym_node} ${p} ${sym_active} ${C_YELLOW}merged${C_RESET}"
+  for p in "${SUPPORTED_PROVIDERS[@]}"; do
+    local p_root
+    p_root="$(get_provider_root "$p")"
+    local a_dest="$project_root/$p_root/agents"
+    local s_dest="$project_root/$p_root/skills"
+
+    if [[ -e "$a_dest" || -e "$s_dest" ]]; then
+      echo -e "  ${sym_node} ${p} ${sym_active} ${C_GREEN}in sync${C_RESET} ${C_DIM}(${a_count} agents, ${s_count} skills)${C_RESET}"
     else
       echo -e "  ${sym_node} ${p} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
     fi
@@ -194,49 +216,84 @@ cmd_status() {
 }
 
 # --- Command: Unsync Provider ---
-cmd_unsync() {
-  local provider="${1:-antigravity}"
-  local target_rel
-  local project_root
-  local target_dir
+unsync_provider() {
+  local provider="$1"
+  local p_root
+  p_root="$(get_provider_root "$provider")"
 
-  target_rel="$(get_provider_target "$provider")"
+  if [[ -z "$p_root" ]]; then
+    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_RED}unknown provider${C_RESET}"
+    return 1
+  fi
+
+  local project_root
   project_root="$(get_project_root)"
-  target_dir="$project_root/$target_rel"
+
+  local a_dest="$project_root/$p_root/agents"
+  local s_dest="$project_root/$p_root/skills"
+
+  local removed=0
+
+  if [[ -L "$a_dest" ]]; then rm "$a_dest"; removed=1; elif [[ -d "$a_dest" ]]; then find "$a_dest" -type l -exec rm {} +; removed=1; fi
+  if [[ -L "$s_dest" ]]; then rm "$s_dest"; removed=1; elif [[ -d "$s_dest" ]]; then find "$s_dest" -type l -exec rm {} +; removed=1; fi
+
+  # If parent provider folder is now empty, clean it up
+  rmdir "$project_root/$p_root" 2>/dev/null || true
+  remove_git_exclusion "$project_root" "$p_root"
+
+  if [[ $removed -eq 1 ]]; then
+    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}unsynced${C_RESET}"
+  else
+    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}not synced${C_RESET}"
+  fi
+}
+
+cmd_unsync() {
+  local target_provider="${1:-gemini}"
+  local project_root
+  project_root="$(get_project_root)"
   local display_root
   display_root="$(clean_path "$project_root")"
 
   echo -e "\n${sym_bolt} ${C_BOLD}Unsyncing my mindset from${C_RESET} ${display_root}"
 
-  if [[ -L "$target_dir" ]]; then
-    rm "$target_dir"
-    remove_git_exclusion "$project_root" "$target_rel"
-    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}unsynced${C_RESET}\n"
-  elif [[ -d "$target_dir" ]]; then
-    find "$target_dir" -type l -exec rm {} +
-    remove_git_exclusion "$project_root" "$target_rel"
-    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}unsynced (cleaned merged)${C_RESET}\n"
+  if [[ "$target_provider" == "all" || "$target_provider" == "--all" ]]; then
+    for p in "${SUPPORTED_PROVIDERS[@]}"; do
+      unsync_provider "$p"
+    done
   else
-    echo -e "  ${sym_node} ${provider} ${sym_inactive} ${C_DIM}not synced${C_RESET}\n"
+    unsync_provider "$target_provider"
   fi
+  echo ""
 }
 
-# --- Command: List Agents ---
+# --- Command: List Agents & Skills ---
 cmd_list() {
-  local display_vault
-  display_vault="$(clean_path "$MINDSET_HOME/antigravity/agents")"
+  local agents_dir="$MINDSET_HOME/agents"
+  local skills_dir="$MINDSET_HOME/skills"
 
-  echo -e "\n${sym_bolt} ${C_BOLD}Agents in${C_RESET} ${display_vault}"
+  echo -e "\n${sym_bolt} ${C_BOLD}Agents in${C_RESET} ${C_DIM}$(clean_path "$agents_dir")${C_RESET}"
+  if [[ -d "$agents_dir" ]]; then
+    for f in "$agents_dir"/*.md; do
+      if [[ -f "$f" ]]; then
+        local base name
+        base="$(basename "$f")"
+        name=$(grep -E "^name:" "$f" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//' || echo "$base")
+        echo -e "  ${sym_node} ${C_BOLD}${name}${C_RESET} ${C_DIM}── ${base}${C_RESET}"
+      fi
+    done
+  fi
 
-  for f in "$MINDSET_HOME/antigravity/agents"/*.md; do
-    if [[ -f "$f" ]]; then
-      local base
-      base="$(basename "$f")"
-      local name
-      name=$(grep -E "^name:" "$f" 2>/dev/null | head -n1 | sed -E 's/name:[[:space:]]*//' || echo "$base")
-      echo -e "  ${sym_node} ${C_BOLD}${name}${C_RESET} ${C_DIM}── ${base}${C_RESET}"
-    fi
-  done
+  echo -e "\n${sym_bolt} ${C_BOLD}Skills in${C_RESET} ${C_DIM}$(clean_path "$skills_dir")${C_RESET}"
+  if [[ -d "$skills_dir" ]]; then
+    for d in "$skills_dir"/*; do
+      if [[ -d "$d" ]]; then
+        local sname
+        sname="$(basename "$d")"
+        echo -e "  ${sym_node} ${C_BOLD}${sname}${C_RESET} ${C_DIM}── SKILL.md${C_RESET}"
+      fi
+    done
+  fi
   echo ""
 }
 
@@ -307,12 +364,14 @@ cmd_uninstall() {
 # --- Help ---
 show_help() {
   echo -e "\n${sym_bolt} ${C_BOLD}Mindset CLI${C_RESET}"
-  echo -e "  mindset [provider]         ${C_DIM}Sync to project (default: antigravity)${C_RESET}"
-  echo -e "  mindset unsync [provider]  ${C_DIM}Remove from project${C_RESET}"
-  echo -e "  mindset status             ${C_DIM}View status in project${C_RESET}"
-  echo -e "  mindset list               ${C_DIM}List agents in vault${C_RESET}"
+  echo -e "  mindset [provider]         ${C_DIM}Sync to project (default: gemini, or 'all')${C_RESET}"
+  echo -e "  mindset sync [provider]    ${C_DIM}Explicit sync${C_RESET}"
+  echo -e "  mindset unsync [provider]  ${C_DIM}Remove from project (or 'all')${C_RESET}"
+  echo -e "  mindset status             ${C_DIM}View sync status across all providers${C_RESET}"
+  echo -e "  mindset list               ${C_DIM}List all agents & skills in your vault${C_RESET}"
   echo -e "  mindset install            ${C_DIM}Install shell aliases (Zsh, Fish)${C_RESET}"
-  echo -e "  mindset uninstall          ${C_DIM}Remove shell aliases (Zsh, Fish)${C_RESET}\n"
+  echo -e "  mindset uninstall          ${C_DIM}Remove shell aliases (Zsh, Fish)${C_RESET}"
+  echo -e "\n  ${C_BOLD}Supported Providers:${C_RESET} gemini (antigravity), claude, codex, grok, all\n"
 }
 
 # --- CLI Router ---
@@ -324,28 +383,28 @@ case "${1:-}" in
     cmd_uninstall
     ;;
   unsync|unlink)
-    cmd_unsync "${2:-antigravity}"
+    cmd_unsync "${2:-gemini}"
     ;;
   status)
     cmd_status
     ;;
-  list|agents)
+  list|agents|skills)
     cmd_list
     ;;
   help|--help|-h)
     show_help
     ;;
   sync)
-    cmd_sync "${2:-antigravity}"
+    cmd_sync "${2:-gemini}"
     ;;
-  antigravity|cursor|claude)
+  gemini|antigravity|claude|codex|grok|all)
     cmd_sync "$1"
     ;;
   "")
-    cmd_sync "antigravity"
+    cmd_sync "gemini"
     ;;
   *)
-    echo -e "\n${sym_bolt} ${C_RED}Unknown command '$1'${C_RESET}"
+    echo -e "\n${sym_bolt} ${C_RED}Unknown command or provider '$1'${C_RESET}"
     show_help
     exit 1
     ;;
